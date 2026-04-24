@@ -6,8 +6,8 @@ import "./App.css";
 const App = () => {
   return (
     <Auth0Provider
-      domain={process.env.REACT_APP_AUTH0_DOMAIN}
-      clientId={process.env.REACT_APP_AUTH0_CLIENT_ID}
+      domain="dev-r42hmecl0vnw6rr3.us.auth0.com"
+      clientId="VFuP90ME9vCKwSnRr49mBXuB3IGrRf4"
       redirectUri={window.location.origin + "/callback"}
     >
       <Dashboard />
