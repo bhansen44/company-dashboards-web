@@ -44,7 +44,7 @@ const Dashboard = () => {
     const fetchUserRole = async () => {
       try {
         // Get the role from Auth0 claims
-        const token = await getAccessTokenSilently();
+        
         
         // Check ID token for custom claims (set in Auth0 Rules)
         const role = user["https://dashboards.yourcompany.com/role"] || "employee";
