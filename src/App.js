@@ -7,7 +7,7 @@ const App = () => {
   return (
     <Auth0Provider
       domain="dev-r42hmecl0vnw6rr3.us.auth0.com"
-      clientId="VFuP90ME9vCKwSnRr49mBXuB3IGrRf4"
+      clientId="L0CQAdLtvb5BBXanFhf9lcdpypLMPDpF"
       redirectUri={window.location.origin + "/callback"}
     >
       <Dashboard />
