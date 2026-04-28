@@ -33,6 +33,7 @@ function Dashboard() {
   const [dashboardData, setDashboardData] = useState(null);
   const [apiError, setApiError] = useState(null);
   const [apiLoading, setApiLoading] = useState(false);
+const [openingArtifactId, setOpeningArtifactId] = useState(null);
   const [activeTab, setActiveTab] = useState("overview");
   const [searchText, setSearchText] = useState("");
   const [selectedDepartment, setSelectedDepartment] = useState("all");
@@ -73,7 +74,83 @@ function Dashboard() {
       setApiLoading(false);
     }
   }, [getIdTokenClaims, isAuthenticated]);
+const openVersionedArtifact = useCallback(
+  async (artifact, stage = "published") => {
+    if (!artifact?.artifact_id) {
+      return;
+    }
 
+    const artifactWindow = window.open("", "_blank");
+
+    if (artifactWindow) {
+      artifactWindow.document.write(
+        "<p style='font-family:Arial;padding:24px'>Loading HRI artifact...</p>"
+      );
+    }
+
+    setOpeningArtifactId(`${artifact.artifact_id}:${stage}`);
+
+    try {
+      const claims = await getIdTokenClaims();
+      const token = claims?.__raw;
+
+      if (!token) {
+        throw new Error("Could not read Auth0 ID token.");
+      }
+
+      const response = await fetch(
+        `/api/artifact-html?artifactId=${encodeURIComponent(
+          artifact.artifact_id
+        )}&stage=${encodeURIComponent(stage)}`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      const contentType = response.headers.get("content-type") || "";
+      const body = await response.text();
+
+      if (!response.ok) {
+        let message = body;
+
+        if (contentType.includes("application/json")) {
+          try {
+            message = JSON.parse(body).error || body;
+          } catch {
+            message = body;
+          }
+        }
+
+        throw new Error(message);
+      }
+
+      if (!artifactWindow) {
+        throw new Error("Popup was blocked. Allow popups for this site.");
+      }
+
+      artifactWindow.document.open();
+      artifactWindow.document.write(body);
+      artifactWindow.document.close();
+    } catch (error) {
+      if (artifactWindow) {
+        artifactWindow.document.open();
+        artifactWindow.document.write(
+          `<pre style="font-family:Arial;padding:24px;white-space:pre-wrap;color:#7a0000">Artifact failed to open:\n\n${escapeHtml(
+            error.message
+          )}</pre>`
+        );
+        artifactWindow.document.close();
+      } else {
+        alert(error.message);
+      }
+    } finally {
+      setOpeningArtifactId(null);
+    }
+  },
+  [getIdTokenClaims]
+);
   useEffect(() => {
     loadDashboardData();
   }, [loadDashboardData]);
@@ -379,9 +456,11 @@ function Dashboard() {
 
             {activeTab === "dashboards" && (
               <DashboardsTab
-                artifacts={filteredArtifacts}
-                departmentMap={departmentMap}
-              />
+  artifacts={filteredArtifacts}
+  departmentMap={departmentMap}
+  onOpenArtifact={openVersionedArtifact}
+  openingArtifactId={openingArtifactId}
+/>
             )}
 
             {activeTab === "employees" && (
@@ -564,7 +643,12 @@ function OverviewTab({
   );
 }
 
-function DashboardsTab({ artifacts, departmentMap }) {
+function DashboardsTab({
+  artifacts,
+  departmentMap,
+  onOpenArtifact,
+  openingArtifactId,
+}) {
   if (!artifacts.length) {
     return <EmptyState title="No dashboard tiles match your filters." />;
   }
@@ -578,8 +662,16 @@ function DashboardsTab({ artifacts, departmentMap }) {
               {departmentIcon(artifact.department_id)}
             </div>
 
-            <span className={artifact.artifact_url ? "status active" : "status pending"}>
-              {artifact.artifact_url ? artifact.status || "Active" : "Coming Soon"}
+            <span
+              className={
+                artifact.current_published_version_id || artifact.artifact_url
+                  ? "status active"
+                  : "status pending"
+              }
+            >
+              {artifact.current_published_version_id || artifact.artifact_url
+                ? artifact.status || "Active"
+                : "Coming Soon"}
             </span>
           </div>
 
@@ -596,7 +688,36 @@ function DashboardsTab({ artifacts, departmentMap }) {
           </div>
 
           <div className="card-actions">
-            {artifact.artifact_url ? (
+            {artifact.current_published_version_id ? (
+              <>
+                <button
+                  className="button primary"
+                  onClick={() => onOpenArtifact(artifact, "published")}
+                  disabled={
+                    openingArtifactId ===
+                    `${artifact.artifact_id}:published`
+                  }
+                >
+                  {openingArtifactId === `${artifact.artifact_id}:published`
+                    ? "Opening..."
+                    : "Open Dashboard"}
+                </button>
+
+                {artifact.current_preview_version_id && (
+                  <button
+                    className="button ghost"
+                    onClick={() => onOpenArtifact(artifact, "preview")}
+                    disabled={
+                      openingArtifactId === `${artifact.artifact_id}:preview`
+                    }
+                  >
+                    {openingArtifactId === `${artifact.artifact_id}:preview`
+                      ? "Opening..."
+                      : "Preview"}
+                  </button>
+                )}
+              </>
+            ) : artifact.artifact_url ? (
               <a
                 className="button primary"
                 href={artifact.artifact_url}
@@ -616,7 +737,6 @@ function DashboardsTab({ artifacts, departmentMap }) {
     </div>
   );
 }
-
 function EmployeesTab({ employeeCards }) {
   if (!employeeCards.length) {
     return <EmptyState title="No employee cards match your filters." />;
@@ -787,4 +907,11 @@ function summarizeBy(rows, fieldName) {
   return Array.from(counts.entries())
     .map(([name, count]) => ({ name, count }))
     .sort((a, b) => b.count - a.count);
+}function escapeHtml(value) {
+  return String(value || "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
 }

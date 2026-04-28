@@ -558,6 +558,8 @@ a {
 .card-actions {
   margin-top: 1.25rem;
   display: flex;
+  gap: 0.65rem;
+  flex-wrap: wrap;
 }
 
 .employee-card {
