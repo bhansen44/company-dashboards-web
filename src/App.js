@@ -33,7 +33,7 @@ function Dashboard() {
   const [dashboardData, setDashboardData] = useState(null);
   const [apiError, setApiError] = useState(null);
   const [apiLoading, setApiLoading] = useState(false);
-const [openingArtifactId, setOpeningArtifactId] = useState(null);
+  const [openingArtifactId, setOpeningArtifactId] = useState(null);
   const [activeTab, setActiveTab] = useState("overview");
   const [searchText, setSearchText] = useState("");
   const [selectedDepartment, setSelectedDepartment] = useState("all");
@@ -74,83 +74,85 @@ const [openingArtifactId, setOpeningArtifactId] = useState(null);
       setApiLoading(false);
     }
   }, [getIdTokenClaims, isAuthenticated]);
-const openVersionedArtifact = useCallback(
-  async (artifact, stage = "published") => {
-    if (!artifact?.artifact_id) {
-      return;
-    }
 
-    const artifactWindow = window.open("", "_blank");
-
-    if (artifactWindow) {
-      artifactWindow.document.write(
-        "<p style='font-family:Arial;padding:24px'>Loading HRI artifact...</p>"
-      );
-    }
-
-    setOpeningArtifactId(`${artifact.artifact_id}:${stage}`);
-
-    try {
-      const claims = await getIdTokenClaims();
-      const token = claims?.__raw;
-
-      if (!token) {
-        throw new Error("Could not read Auth0 ID token.");
+  const openVersionedArtifact = useCallback(
+    async (artifact, stage = "published") => {
+      if (!artifact?.artifact_id) {
+        return;
       }
 
-      const response = await fetch(
-        `/api/artifact-html?artifactId=${encodeURIComponent(
-          artifact.artifact_id
-        )}&stage=${encodeURIComponent(stage)}`,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
+      const artifactWindow = window.open("", "_blank");
 
-      const contentType = response.headers.get("content-type") || "";
-      const body = await response.text();
-
-      if (!response.ok) {
-        let message = body;
-
-        if (contentType.includes("application/json")) {
-          try {
-            message = JSON.parse(body).error || body;
-          } catch {
-            message = body;
-          }
-        }
-
-        throw new Error(message);
-      }
-
-      if (!artifactWindow) {
-        throw new Error("Popup was blocked. Allow popups for this site.");
-      }
-
-      artifactWindow.document.open();
-      artifactWindow.document.write(body);
-      artifactWindow.document.close();
-    } catch (error) {
       if (artifactWindow) {
-        artifactWindow.document.open();
         artifactWindow.document.write(
-          `<pre style="font-family:Arial;padding:24px;white-space:pre-wrap;color:#7a0000">Artifact failed to open:\n\n${escapeHtml(
-            error.message
-          )}</pre>`
+          "<p style='font-family:Arial;padding:24px'>Loading HRI artifact...</p>"
         );
-        artifactWindow.document.close();
-      } else {
-        alert(error.message);
       }
-    } finally {
-      setOpeningArtifactId(null);
-    }
-  },
-  [getIdTokenClaims]
-);
+
+      setOpeningArtifactId(`${artifact.artifact_id}:${stage}`);
+
+      try {
+        const claims = await getIdTokenClaims();
+        const token = claims?.__raw;
+
+        if (!token) {
+          throw new Error("Could not read Auth0 ID token.");
+        }
+
+        const response = await fetch(
+          `/api/artifact-html?artifactId=${encodeURIComponent(
+            artifact.artifact_id
+          )}&stage=${encodeURIComponent(stage)}`,
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          }
+        );
+
+        const contentType = response.headers.get("content-type") || "";
+        const body = await response.text();
+
+        if (!response.ok) {
+          let message = body;
+
+          if (contentType.includes("application/json")) {
+            try {
+              message = JSON.parse(body).error || body;
+            } catch {
+              message = body;
+            }
+          }
+
+          throw new Error(message);
+        }
+
+        if (!artifactWindow) {
+          throw new Error("Popup was blocked. Allow popups for this site.");
+        }
+
+        artifactWindow.document.open();
+        artifactWindow.document.write(body);
+        artifactWindow.document.close();
+      } catch (error) {
+        if (artifactWindow) {
+          artifactWindow.document.open();
+          artifactWindow.document.write(
+            `<pre style="font-family:Arial;padding:24px;white-space:pre-wrap;color:#7a0000">Artifact failed to open:\n\n${escapeHtml(
+              error.message
+            )}</pre>`
+          );
+          artifactWindow.document.close();
+        } else {
+          alert(error.message);
+        }
+      } finally {
+        setOpeningArtifactId(null);
+      }
+    },
+    [getIdTokenClaims]
+  );
+
   useEffect(() => {
     loadDashboardData();
   }, [loadDashboardData]);
@@ -207,6 +209,7 @@ const openVersionedArtifact = useCallback(
         artifact.tile_title,
         artifact.source_name,
         artifact.department_id,
+        artifact.subdepartment_id,
         artifact.artifact_type,
         artifact.status,
       ]
@@ -247,7 +250,9 @@ const openVersionedArtifact = useCallback(
     const programs = new Map();
 
     (dashboardData?.projects || []).forEach((project) => {
-      const key = project.program_name || "Unassigned";
+      const key =
+        project.project_type_label || project.program_name || "Unassigned";
+
       programs.set(key, (programs.get(key) || 0) + 1);
     });
 
@@ -258,13 +263,19 @@ const openVersionedArtifact = useCallback(
 
   const filteredProjects = useMemo(() => {
     return (dashboardData?.projects || []).filter((project) => {
+      const projectTilesText = (project.project_tiles || [])
+        .map((tile) => [tile.tile_title, tile.tile_key, tile.status].join(" "))
+        .join(" ");
+
       const haystack = [
         project.project_id,
         project.job_name,
         project.job_number,
         project.program_name,
+        project.project_type_label,
         project.status,
         project.visible_to_raw,
+        projectTilesText,
       ]
         .filter(Boolean)
         .join(" ")
@@ -273,8 +284,11 @@ const openVersionedArtifact = useCallback(
       const matchesSearch =
         !normalizedSearch || haystack.includes(normalizedSearch);
 
+      const programOrType =
+        project.project_type_label || project.program_name || "Unassigned";
+
       const matchesProgram =
-        selectedProgram === "all" || project.program_name === selectedProgram;
+        selectedProgram === "all" || programOrType === selectedProgram;
 
       return matchesSearch && matchesProgram;
     });
@@ -388,7 +402,7 @@ const openVersionedArtifact = useCallback(
                 className={activeTab === "projects" ? "active" : ""}
                 onClick={() => setActiveTab("projects")}
               >
-                Project Tabs
+                Project Insights
               </button>
             </nav>
 
@@ -427,13 +441,13 @@ const openVersionedArtifact = useCallback(
 
               {activeTab === "projects" && (
                 <div>
-                  <label htmlFor="program-filter">Program</label>
+                  <label htmlFor="program-filter">Project Type / Program</label>
                   <select
                     id="program-filter"
                     value={selectedProgram}
                     onChange={(event) => setSelectedProgram(event.target.value)}
                   >
-                    <option value="all">All programs</option>
+                    <option value="all">All project types</option>
 
                     {programOptions.map((program) => (
                       <option key={program.name} value={program.name}>
@@ -447,21 +461,21 @@ const openVersionedArtifact = useCallback(
 
             {activeTab === "overview" && (
               <OverviewTab
-  dashboardData={dashboardData}
-  artifactsByDepartment={artifactsByDepartment}
-  departmentMap={departmentMap}
-  setActiveTab={setActiveTab}
-  setSelectedDepartment={setSelectedDepartment}
-/>
+                dashboardData={dashboardData}
+                artifactsByDepartment={artifactsByDepartment}
+                departmentMap={departmentMap}
+                setActiveTab={setActiveTab}
+                setSelectedDepartment={setSelectedDepartment}
+              />
             )}
 
             {activeTab === "dashboards" && (
               <DashboardsTab
-  artifacts={filteredArtifacts}
-  departmentMap={departmentMap}
-  onOpenArtifact={openVersionedArtifact}
-  openingArtifactId={openingArtifactId}
-/>
+                artifacts={filteredArtifacts}
+                departmentMap={departmentMap}
+                onOpenArtifact={openVersionedArtifact}
+                openingArtifactId={openingArtifactId}
+              />
             )}
 
             {activeTab === "employees" && (
@@ -488,7 +502,7 @@ function LoginPage({ onLogin }) {
 
         <p>
           Role-based access to executive dashboards, employee cards, project
-          pages, and generated business artifacts.
+          insights, and generated business artifacts.
         </p>
 
         <div className="login-points">
@@ -538,11 +552,10 @@ function HeroSection({ dashboardData }) {
       <div className="stat-grid">
         <StatCard label="Dashboard Tiles" value={dashboardData.counts.artifacts} />
         <StatCard label="Employee Cards" value={dashboardData.counts.employeeCards} />
-        <StatCard label="Project Tabs" value={dashboardData.counts.projects} />
+        <StatCard label="Project Insights" value={dashboardData.counts.projects} />
         <StatCard
-          label="Card Scope"
-          value={user?.employee_card_access_raw || "None"}
-          small
+          label="Project Tile Placeholders"
+          value={dashboardData.counts.projectTiles || 0}
         />
       </div>
     </section>
@@ -624,7 +637,7 @@ function OverviewTab({
         </div>
 
         <div className="mini-list">
-          {summarizeBy(dashboardData.projects || [], "program_name").map(
+          {summarizeBy(dashboardData.projects || [], "project_type_label").map(
             (item) => (
               <div key={item.name} className="mini-row">
                 <span>{item.name || "Unassigned"}</span>
@@ -657,6 +670,7 @@ function OverviewTab({
     </div>
   );
 }
+
 function DashboardsTab({
   artifacts,
   departmentMap,
@@ -667,90 +681,140 @@ function DashboardsTab({
     return <EmptyState title="No dashboard tiles match your filters." />;
   }
 
+  const groups = artifacts.reduce((acc, artifact) => {
+    const groupId =
+      artifact.subdepartment_id || artifact.department_id || "other";
+
+    if (!acc[groupId]) {
+      acc[groupId] = {
+        id: groupId,
+        name: getDepartmentName(groupId, departmentMap),
+        artifacts: [],
+      };
+    }
+
+    acc[groupId].artifacts.push(artifact);
+    return acc;
+  }, {});
+
+  const orderedGroups = Object.values(groups).sort((a, b) =>
+    a.name.localeCompare(b.name)
+  );
+
   return (
-    <div className="card-grid">
-      {artifacts.map((artifact) => (
-        <article key={artifact.artifact_id} className="dashboard-card">
-          <div className="card-top">
-            <div className="card-icon">
-              {departmentIcon(artifact.department_id)}
+    <div className="stacked-sections">
+      {orderedGroups.map((group) => (
+        <section key={group.id} className="panel">
+          <div className="section-heading compact">
+            <div>
+              <div className="eyebrow">Tile Group</div>
+              <h2>{group.name}</h2>
             </div>
-
-            <span
-              className={
-                artifact.current_published_version_id || artifact.artifact_url
-                  ? "status active"
-                  : "status pending"
-              }
-            >
-              {artifact.current_published_version_id || artifact.artifact_url
-                ? artifact.status || "Active"
-                : "Coming Soon"}
-            </span>
           </div>
 
-          <h3>{artifact.tile_title || artifact.artifact_id}</h3>
-          <p>{artifact.source_name || "Dashboard artifact"}</p>
+          <div className="card-grid">
+            {group.artifacts.map((artifact) => (
+              <article key={artifact.artifact_id} className="dashboard-card">
+                <div className="card-top">
+                  <div className="card-icon">
+                    {departmentIcon(artifact.department_id)}
+                  </div>
 
-          <div className="meta-stack">
-            <span>
-              Department:{" "}
-              {getDepartmentName(artifact.department_id, departmentMap)}
-            </span>
-            <span>Type: {formatText(artifact.artifact_type)}</span>
-            <span>ID: {artifact.artifact_id}</span>
-          </div>
-
-          <div className="card-actions">
-            {artifact.current_published_version_id ? (
-              <>
-                <button
-                  className="button primary"
-                  onClick={() => onOpenArtifact(artifact, "published")}
-                  disabled={
-                    openingArtifactId ===
-                    `${artifact.artifact_id}:published`
-                  }
-                >
-                  {openingArtifactId === `${artifact.artifact_id}:published`
-                    ? "Opening..."
-                    : "Open Dashboard"}
-                </button>
-
-                {artifact.current_preview_version_id && (
-                  <button
-                    className="button ghost"
-                    onClick={() => onOpenArtifact(artifact, "preview")}
-                    disabled={
-                      openingArtifactId === `${artifact.artifact_id}:preview`
+                  <span
+                    className={
+                      artifact.current_published_version_id ||
+                      artifact.artifact_url
+                        ? "status active"
+                        : "status pending"
                     }
                   >
-                    {openingArtifactId === `${artifact.artifact_id}:preview`
-                      ? "Opening..."
-                      : "Preview"}
-                  </button>
-                )}
-              </>
-            ) : artifact.artifact_url ? (
-              <a
-                className="button primary"
-                href={artifact.artifact_url}
-                target="_blank"
-                rel="noreferrer"
-              >
-                Open Dashboard
-              </a>
-            ) : (
-              <button className="button disabled" disabled>
-                Link Coming Soon
-              </button>
-            )}
+                    {artifact.current_published_version_id ||
+                    artifact.artifact_url
+                      ? artifact.status || "Active"
+                      : "Coming Soon"}
+                  </span>
+                </div>
+
+                <h3>{artifact.tile_title || artifact.artifact_id}</h3>
+                <p>{artifact.source_name || "Dashboard artifact"}</p>
+
+                <div className="meta-stack">
+                  <span>
+                    Department:{" "}
+                    {getDepartmentName(artifact.department_id, departmentMap)}
+                  </span>
+
+                  {artifact.subdepartment_id && (
+                    <span>
+                      Subdepartment:{" "}
+                      {getDepartmentName(
+                        artifact.subdepartment_id,
+                        departmentMap
+                      )}
+                    </span>
+                  )}
+
+                  <span>Type: {formatText(artifact.artifact_type)}</span>
+                  <span>ID: {artifact.artifact_id}</span>
+                </div>
+
+                <div className="card-actions">
+                  {artifact.current_published_version_id ? (
+                    <>
+                      <button
+                        className="button primary"
+                        onClick={() => onOpenArtifact(artifact, "published")}
+                        disabled={
+                          openingArtifactId ===
+                          `${artifact.artifact_id}:published`
+                        }
+                      >
+                        {openingArtifactId ===
+                        `${artifact.artifact_id}:published`
+                          ? "Opening..."
+                          : "Open Dashboard"}
+                      </button>
+
+                      {artifact.current_preview_version_id && (
+                        <button
+                          className="button ghost"
+                          onClick={() => onOpenArtifact(artifact, "preview")}
+                          disabled={
+                            openingArtifactId ===
+                            `${artifact.artifact_id}:preview`
+                          }
+                        >
+                          {openingArtifactId ===
+                          `${artifact.artifact_id}:preview`
+                            ? "Opening..."
+                            : "Preview"}
+                        </button>
+                      )}
+                    </>
+                  ) : artifact.artifact_url ? (
+                    <a
+                      className="button primary"
+                      href={artifact.artifact_url}
+                      target="_blank"
+                      rel="noreferrer"
+                    >
+                      Open Dashboard
+                    </a>
+                  ) : (
+                    <button className="button disabled" disabled>
+                      Coming Soon
+                    </button>
+                  )}
+                </div>
+              </article>
+            ))}
           </div>
-        </article>
+        </section>
       ))}
     </div>
   );
 }
+
 function EmployeesTab({ employeeCards }) {
   if (!employeeCards.length) {
     return <EmptyState title="No employee cards match your filters." />;
@@ -782,41 +846,128 @@ function EmployeesTab({ employeeCards }) {
 }
 
 function ProjectsTab({ projects }) {
+  const [selectedProjectId, setSelectedProjectId] = useState(null);
+
   if (!projects.length) {
-    return <EmptyState title="No project tabs match your filters." />;
+    return <EmptyState title="No project insights match your filters." />;
+  }
+
+  const selectedProject = projects.find(
+    (project) => project.project_id === selectedProjectId
+  );
+
+  if (selectedProject) {
+    const tiles = selectedProject.project_tiles || [];
+
+    return (
+      <section className="panel">
+        <div className="section-heading">
+          <div>
+            <div className="eyebrow">Project Insights</div>
+            <h2>{selectedProject.job_name || "Unnamed Project"}</h2>
+            <p className="muted">
+              Job #{selectedProject.job_number || "—"} ·{" "}
+              {selectedProject.project_type_label ||
+                selectedProject.program_name ||
+                "Project"}
+            </p>
+          </div>
+
+          <button
+            className="button ghost"
+            onClick={() => setSelectedProjectId(null)}
+          >
+            Back to Projects
+          </button>
+        </div>
+
+        {tiles.length === 0 ? (
+          <EmptyState title="No project insight tiles have been created for this project type yet." />
+        ) : (
+          <div className="card-grid">
+            {tiles.map((tile) => (
+              <article key={tile.project_tile_id} className="dashboard-card">
+                <div className="card-top">
+                  <div className="card-icon">🏗️</div>
+
+                  <span
+                    className={
+                      tile.current_published_version_id || tile.artifact_url
+                        ? "status active"
+                        : "status pending"
+                    }
+                  >
+                    {tile.current_published_version_id || tile.artifact_url
+                      ? tile.status || "Active"
+                      : "Coming Soon"}
+                  </span>
+                </div>
+
+                <h3>{tile.tile_title}</h3>
+                <p>
+                  {selectedProject.project_type_label || "Project"} insight tile
+                  for {selectedProject.job_name}.
+                </p>
+
+                <div className="meta-stack">
+                  <span>
+                    Project:{" "}
+                    {selectedProject.job_number || selectedProject.project_id}
+                  </span>
+                  <span>Tile key: {tile.tile_key}</span>
+                  <span>Type: {formatText(tile.artifact_type)}</span>
+                </div>
+
+                <div className="card-actions">
+                  <button className="button disabled" disabled>
+                    Coming Soon
+                  </button>
+                </div>
+              </article>
+            ))}
+          </div>
+        )}
+      </section>
+    );
   }
 
   return (
-    <div className="project-table-wrap">
-      <table className="project-table">
-        <thead>
-          <tr>
-            <th>Project</th>
-            <th>Job #</th>
-            <th>Program</th>
-            <th>Status</th>
-            <th>Visible To</th>
-          </tr>
-        </thead>
+    <div className="card-grid">
+      {projects.map((project) => {
+        const tileCount = (project.project_tiles || []).length;
 
-        <tbody>
-          {projects.map((project) => (
-            <tr key={project.project_id}>
-              <td>
-                <strong>{project.job_name || "Unnamed Project"}</strong>
-              </td>
-              <td>{project.job_number || "—"}</td>
-              <td>{project.program_name || "—"}</td>
-              <td>
-                <span className="status active">
-                  {project.status || "Active"}
-                </span>
-              </td>
-              <td>{project.visible_to_raw || "Permission rule"}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+        return (
+          <article key={project.project_id} className="dashboard-card project-card">
+            <div className="card-top">
+              <div className="card-icon">🏗️</div>
+
+              <span className="status active">
+                {project.project_type_label || project.program_name || "Project"}
+              </span>
+            </div>
+
+            <h3>{project.job_name || "Unnamed Project"}</h3>
+            <p>Job #{project.job_number || "—"}</p>
+
+            <div className="meta-stack">
+              <span>Program: {project.program_name || "—"}</span>
+              <span>Status: {project.status || "Active"}</span>
+              <span>
+                {tileCount} project insight tile{tileCount === 1 ? "" : "s"}
+              </span>
+            </div>
+
+            <div className="card-actions">
+              <button
+                className="button primary"
+                onClick={() => setSelectedProjectId(project.project_id)}
+              >
+                Open Project Insights
+              </button>
+            </div>
+          </article>
+        );
+      })}
     </div>
   );
 }
@@ -858,13 +1009,25 @@ function getDepartmentName(departmentId, departmentMap) {
 
 function departmentIcon(departmentId) {
   const icons = {
-    program_management: "📋",
-    gc_ops: "🏗️",
-    steel_thermal: "🔧",
-    preconstruction: "📐",
-    compliance: "🛡️",
+    corporate: "🏢",
     administration: "📊",
+    finance: "💵",
+    human_resources: "👥",
+    compliance: "🛡️",
+    ehs: "🛡️",
+    project_controls: "📈",
+    gc_ops: "🏗️",
     it: "💻",
+    preconstruction: "📐",
+    design_engineering: "📐",
+    estimating: "🧮",
+    program_management: "📋",
+    marketing: "📣",
+    cold_storage_distribution: "❄️",
+    heavy_industrial: "🏭",
+    food_beverage: "🍽️",
+    cost_analytics: "📊",
+    steel_thermal: "🔧",
   };
 
   return icons[departmentId] || "📁";
@@ -921,7 +1084,9 @@ function summarizeBy(rows, fieldName) {
   return Array.from(counts.entries())
     .map(([name, count]) => ({ name, count }))
     .sort((a, b) => b.count - a.count);
-}function escapeHtml(value) {
+}
+
+function escapeHtml(value) {
   return String(value || "")
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
