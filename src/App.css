@@ -776,4 +776,76 @@ a {
 
 .project-card .card-actions {
   margin-top: 1.5rem;
+}.navigation-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  background: white;
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  padding: 1rem;
+  margin-bottom: 1rem;
+  box-shadow: var(--shadow-soft);
+}
+
+.breadcrumb {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.breadcrumb strong {
+  color: var(--ink);
+  font-size: 1rem;
+}
+
+.navigation-actions {
+  display: flex;
+  gap: 0.65rem;
+  flex-wrap: wrap;
+}
+
+.department-card-button {
+  width: 100%;
+  text-align: left;
+  cursor: pointer;
+  color: inherit;
+  font: inherit;
+  appearance: none;
+}
+
+.department-card-button:hover {
+  transform: translateY(-2px);
+  border-color: var(--hri-teal);
+  box-shadow: 0 14px 30px rgba(15, 35, 43, 0.12);
+}
+
+.department-card-button:focus-visible {
+  outline: 3px solid rgba(0, 131, 143, 0.25);
+  outline-offset: 3px;
+}
+
+.stacked-sections {
+  display: grid;
+  gap: 1.25rem;
+}
+
+.project-card {
+  min-height: 260px;
+}
+
+.project-card .card-actions {
+  margin-top: 1.5rem;
+}
+
+@media (max-width: 720px) {
+  .navigation-row {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .navigation-actions {
+    width: 100%;
+  }
 }
