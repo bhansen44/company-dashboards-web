@@ -75,6 +75,22 @@ function safeEmployeeCard(employee) {
   };
 }
 
+function sortArtifacts(a, b) {
+  const deptCompare = String(a.department_id || "").localeCompare(
+    String(b.department_id || "")
+  );
+
+  if (deptCompare !== 0) return deptCompare;
+
+  const subCompare = String(a.subdepartment_id || "").localeCompare(
+    String(b.subdepartment_id || "")
+  );
+
+  if (subCompare !== 0) return subCompare;
+
+  return Number(a.sort_order || 999) - Number(b.sort_order || 999);
+}
+
 module.exports = async function handler(req, res) {
   try {
     if (req.method !== "GET") {
@@ -133,6 +149,7 @@ module.exports = async function handler(req, res) {
       allEmployees,
       projects,
       projectAccessRules,
+      projectTiles,
     ] = await Promise.all([
       supabaseSelect("hri_departments", "?select=*"),
       supabaseSelect("hri_artifacts", "?select=*"),
@@ -151,6 +168,7 @@ module.exports = async function handler(req, res) {
       supabaseSelect("hri_employees", "?select=*"),
       supabaseSelect("hri_projects", "?select=*"),
       supabaseSelect("hri_project_access_rules", "?select=*"),
+      supabaseSelect("hri_project_tiles", "?select=*"),
     ]);
 
     const roles = makeSet(dashboardAccessRows, "role");
@@ -164,23 +182,20 @@ module.exports = async function handler(req, res) {
 
     const canSeeAll =
       roles.has("executive") ||
+      roles.has("admin") ||
       artifactsAllowed.has("all") ||
-      departmentsAllowed.has("all");
+      departmentsAllowed.has("all") ||
+      subdepartmentsAllowed.has("all");
 
     const visibleArtifacts = artifacts
       .filter((artifact) => {
         if (canSeeAll) return true;
         if (artifactsAllowed.has(artifact.artifact_id)) return true;
         if (departmentsAllowed.has(artifact.department_id)) return true;
+        if (subdepartmentsAllowed.has(artifact.subdepartment_id)) return true;
         return false;
       })
-      .sort((a, b) => {
-        const deptCompare = String(a.department_id || "").localeCompare(
-          String(b.department_id || "")
-        );
-        if (deptCompare !== 0) return deptCompare;
-        return Number(a.sort_order || 999) - Number(b.sort_order || 999);
-      });
+      .sort(sortArtifacts);
 
     const projectRulesByProject = new Map();
 
@@ -192,9 +207,9 @@ module.exports = async function handler(req, res) {
       projectRulesByProject.get(rule.project_id).push(rule);
     }
 
-    const visibleProjects = projects
+    const visibleProjectsBase = projects
       .filter((project) => {
-        if (projectsAllowed.has("all") || roles.has("executive")) {
+        if (projectsAllowed.has("all") || roles.has("executive") || roles.has("admin")) {
           return true;
         }
 
@@ -226,6 +241,35 @@ module.exports = async function handler(req, res) {
         if (programCompare !== 0) return programCompare;
         return String(a.job_name || "").localeCompare(String(b.job_name || ""));
       });
+
+    const visibleProjectIds = new Set(
+      visibleProjectsBase.map((project) => project.project_id)
+    );
+
+    const projectTilesByProject = new Map();
+
+    for (const tile of projectTiles) {
+      if (!visibleProjectIds.has(tile.project_id)) {
+        continue;
+      }
+
+      if (!projectTilesByProject.has(tile.project_id)) {
+        projectTilesByProject.set(tile.project_id, []);
+      }
+
+      projectTilesByProject.get(tile.project_id).push(tile);
+    }
+
+    for (const tiles of projectTilesByProject.values()) {
+      tiles.sort(
+        (a, b) => Number(a.sort_order || 999) - Number(b.sort_order || 999)
+      );
+    }
+
+    const visibleProjects = visibleProjectsBase.map((project) => ({
+      ...project,
+      project_tiles: projectTilesByProject.get(project.project_id) || [],
+    }));
 
     const activeEmployees = allEmployees.filter(
       (employee) => employee.is_active
@@ -284,6 +328,10 @@ module.exports = async function handler(req, res) {
         artifacts: visibleArtifacts.length,
         employeeCards: visibleEmployeeCards.length,
         projects: visibleProjects.length,
+        projectTiles: visibleProjects.reduce(
+          (sum, project) => sum + (project.project_tiles || []).length,
+          0
+        ),
       },
       access: {
         dashboardAccess: dashboardAccessRows,

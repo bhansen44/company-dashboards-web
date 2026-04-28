@@ -765,4 +765,15 @@ a {
 .department-card-button:focus-visible {
   outline: 3px solid rgba(0, 131, 143, 0.25);
   outline-offset: 3px;
+}.stacked-sections {
+  display: grid;
+  gap: 1.25rem;
+}
+
+.project-card {
+  min-height: 260px;
+}
+
+.project-card .card-actions {
+  margin-top: 1.5rem;
 }
