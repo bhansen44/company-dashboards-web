@@ -210,9 +210,20 @@ function Dashboard() {
     return map;
   }, [dashboardData]);
 
-  const artifacts = dashboardData?.artifacts || [];
-  const employeeCards = dashboardData?.employeeCards || [];
-  const projects = dashboardData?.projects || [];
+const artifacts = useMemo(
+  () => dashboardData?.artifacts ?? [],
+  [dashboardData]
+);
+
+const employeeCards = useMemo(
+  () => dashboardData?.employeeCards ?? [],
+  [dashboardData]
+);
+
+const projects = useMemo(
+  () => dashboardData?.projects ?? [],
+  [dashboardData]
+);
 
   const artifactsByDepartment = useMemo(() => {
     const grouped = {};
