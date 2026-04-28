@@ -747,4 +747,22 @@ a {
   .employee-card {
     flex-direction: column;
   }
+}.department-card-button {
+  width: 100%;
+  text-align: left;
+  cursor: pointer;
+  color: inherit;
+  font: inherit;
+  appearance: none;
+}
+
+.department-card-button:hover {
+  transform: translateY(-2px);
+  border-color: var(--hri-teal);
+  box-shadow: 0 14px 30px rgba(15, 35, 43, 0.12);
+}
+
+.department-card-button:focus-visible {
+  outline: 3px solid rgba(0, 131, 143, 0.25);
+  outline-offset: 3px;
 }

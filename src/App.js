@@ -447,11 +447,12 @@ const openVersionedArtifact = useCallback(
 
             {activeTab === "overview" && (
               <OverviewTab
-                dashboardData={dashboardData}
-                artifactsByDepartment={artifactsByDepartment}
-                departmentMap={departmentMap}
-                setActiveTab={setActiveTab}
-              />
+  dashboardData={dashboardData}
+  artifactsByDepartment={artifactsByDepartment}
+  departmentMap={departmentMap}
+  setActiveTab={setActiveTab}
+  setSelectedDepartment={setSelectedDepartment}
+/>
             )}
 
             {activeTab === "dashboards" && (
@@ -553,6 +554,7 @@ function OverviewTab({
   artifactsByDepartment,
   departmentMap,
   setActiveTab,
+  setSelectedDepartment,
 }) {
   const departments = Object.entries(artifactsByDepartment).map(
     ([departmentId, artifacts]) => ({
@@ -564,6 +566,16 @@ function OverviewTab({
 
   departments.sort((a, b) => a.name.localeCompare(b.name));
 
+  const openDepartment = (departmentId) => {
+    setSelectedDepartment(departmentId);
+    setActiveTab("dashboards");
+  };
+
+  const openAllDashboards = () => {
+    setSelectedDepartment("all");
+    setActiveTab("dashboards");
+  };
+
   return (
     <div className="overview-grid">
       <section className="panel wide">
@@ -573,17 +585,20 @@ function OverviewTab({
             <h2>Accessible dashboard groups</h2>
           </div>
 
-          <button
-            className="button ghost"
-            onClick={() => setActiveTab("dashboards")}
-          >
+          <button className="button ghost" onClick={openAllDashboards}>
             View all dashboards
           </button>
         </div>
 
         <div className="department-grid">
           {departments.map((department) => (
-            <div key={department.id} className="department-card">
+            <button
+              key={department.id}
+              type="button"
+              className="department-card department-card-button"
+              onClick={() => openDepartment(department.id)}
+              aria-label={`Open ${department.name} dashboards`}
+            >
               <div className="department-icon">
                 {departmentIcon(department.id)}
               </div>
@@ -595,7 +610,7 @@ function OverviewTab({
                   {department.artifacts.length === 1 ? "" : "s"}
                 </p>
               </div>
-            </div>
+            </button>
           ))}
         </div>
       </section>
@@ -642,7 +657,6 @@ function OverviewTab({
     </div>
   );
 }
-
 function DashboardsTab({
   artifacts,
   departmentMap,
