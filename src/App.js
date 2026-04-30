@@ -84,7 +84,9 @@ function Dashboard() {
     setApiError(null);
 
     try {
-      const claims = await getIdTokenClaims();
+      const claims = await getIdTokenClaims({
+  cacheMode: "off",
+});
       const token = claims?.__raw;
 
       if (!token) {
@@ -128,7 +130,9 @@ function Dashboard() {
       setOpeningArtifactId(`${artifact.artifact_id}:${stage}`);
 
       try {
-        const claims = await getIdTokenClaims();
+        const claims = await getIdTokenClaims({
+  cacheMode: "off",
+});
         const token = claims?.__raw;
 
         if (!token) {
