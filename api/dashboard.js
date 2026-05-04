@@ -71,7 +71,6 @@ function isArchivedRow(row) {
 }
 
 function safeEmployeeCard(employee) {
-  ...
 }function safeEmployeeCard(employee) {
   return {
     employee_email: employee.employee_email,
@@ -326,17 +325,6 @@ const visibleArtifacts = activeArtifacts
           String(b.employee_name || "")
         )
       );
-const projectsForResponse = (visibleProjects || []).map((project) => ({
-  ...project,
-  project_tiles: Array.isArray(project.project_tiles)
-    ? project.project_tiles.filter((tile) => !isArchivedRow(tile))
-    : [],
-}));
-
-const projectTileCountForResponse = projectsForResponse.reduce(
-  (sum, project) => sum + (project.project_tiles || []).length,
-  0
-);
     return res.status(200).json({
       user: {
         email,
@@ -347,11 +335,14 @@ const projectTileCountForResponse = projectsForResponse.reduce(
         landing_page: currentEmployee.landing_page,
         employee_card_access_raw: currentEmployee.employee_card_access_raw,
       },
-     counts: {
+   counts: {
   artifacts: visibleArtifacts.length,
   employeeCards: visibleEmployeeCards.length,
-  projects: projectsForResponse.length,
-  projectTiles: projectTileCountForResponse,
+  projects: visibleProjects.length,
+  projectTiles: visibleProjects.reduce(
+    (sum, project) => sum + (project.project_tiles || []).length,
+    0
+  ),
 },
       access: {
         dashboardAccess: dashboardAccessRows,
@@ -360,7 +351,7 @@ const projectTileCountForResponse = projectsForResponse.reduce(
       departments,
       artifacts: visibleArtifacts,
       employeeCards: visibleEmployeeCards,
-     projects: projectsForResponse,
+     projects: visibleProjects,
     });
   } catch (error) {
     console.error(error);
