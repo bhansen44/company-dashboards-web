@@ -63,7 +63,16 @@ function makeSet(rows, accessType) {
   );
 }
 
+function isArchivedRow(row) {
+  const tileGroup = String(row?.tile_group || "").trim().toLowerCase();
+  const status = String(row?.status || "").trim().toLowerCase();
+
+  return tileGroup === "archived" || status === "archived";
+}
+
 function safeEmployeeCard(employee) {
+  ...
+}function safeEmployeeCard(employee) {
   return {
     employee_email: employee.employee_email,
     employee_name: employee.employee_name,
@@ -187,8 +196,12 @@ module.exports = async function handler(req, res) {
       departmentsAllowed.has("all") ||
       subdepartmentsAllowed.has("all");
 
-    const visibleArtifacts = artifacts
-      .filter((artifact) => {
+    const activeArtifacts = (artifacts || []).filter(
+  (artifact) => !isArchivedRow(artifact)
+);
+
+const visibleArtifacts = activeArtifacts
+  .filter((artifact) => {
         if (canSeeAll) return true;
         if (artifactsAllowed.has(artifact.artifact_id)) return true;
         if (departmentsAllowed.has(artifact.department_id)) return true;
@@ -313,7 +326,17 @@ module.exports = async function handler(req, res) {
           String(b.employee_name || "")
         )
       );
+const projectsForResponse = (visibleProjects || []).map((project) => ({
+  ...project,
+  project_tiles: Array.isArray(project.project_tiles)
+    ? project.project_tiles.filter((tile) => !isArchivedRow(tile))
+    : [],
+}));
 
+const projectTileCountForResponse = projectsForResponse.reduce(
+  (sum, project) => sum + (project.project_tiles || []).length,
+  0
+);
     return res.status(200).json({
       user: {
         email,
@@ -324,15 +347,12 @@ module.exports = async function handler(req, res) {
         landing_page: currentEmployee.landing_page,
         employee_card_access_raw: currentEmployee.employee_card_access_raw,
       },
-      counts: {
-        artifacts: visibleArtifacts.length,
-        employeeCards: visibleEmployeeCards.length,
-        projects: visibleProjects.length,
-        projectTiles: visibleProjects.reduce(
-          (sum, project) => sum + (project.project_tiles || []).length,
-          0
-        ),
-      },
+     counts: {
+  artifacts: visibleArtifacts.length,
+  employeeCards: visibleEmployeeCards.length,
+  projects: projectsForResponse.length,
+  projectTiles: projectTileCountForResponse,
+},
       access: {
         dashboardAccess: dashboardAccessRows,
         employeeCardAccess: cardAccessRows,
@@ -340,7 +360,7 @@ module.exports = async function handler(req, res) {
       departments,
       artifacts: visibleArtifacts,
       employeeCards: visibleEmployeeCards,
-      projects: visibleProjects,
+     projects: projectsForResponse,
     });
   } catch (error) {
     console.error(error);
