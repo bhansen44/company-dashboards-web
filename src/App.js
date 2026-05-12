@@ -798,19 +798,23 @@ function DashboardArtifactCard({
   const hasPreviewVersion = Boolean(artifact.current_preview_version_id);
   const hasExternalUrl = Boolean(artifact.artifact_url);
 
+  const isAvailable = hasPublishedVersion || hasPreviewVersion || hasExternalUrl;
+
+  const statusLabel = hasPublishedVersion
+    ? artifact.status || "Active"
+    : hasPreviewVersion
+    ? "Preview Ready"
+    : hasExternalUrl
+    ? artifact.status || "Active"
+    : "Coming Soon";
+
   return (
     <article className="dashboard-card">
       <div className="card-top">
         <div className="card-icon">{departmentIcon(artifact.department_id)}</div>
 
-        <span
-          className={
-            hasPublishedVersion || hasExternalUrl ? "status active" : "status pending"
-          }
-        >
-          {hasPublishedVersion || hasExternalUrl
-            ? artifact.status || "Active"
-            : "Coming Soon"}
+        <span className={isAvailable ? "status active" : "status pending"}>
+          {statusLabel}
         </span>
       </div>
 
@@ -834,35 +838,35 @@ function DashboardArtifactCard({
       </div>
 
       <div className="card-actions">
-        {hasPublishedVersion ? (
-          <>
-            <button
-              className="button primary"
-              onClick={() => onOpenArtifact(artifact, "published")}
-              disabled={
-                openingArtifactId === `${artifact.artifact_id}:published`
-              }
-            >
-              {openingArtifactId === `${artifact.artifact_id}:published`
-                ? "Opening..."
-                : "Open Dashboard"}
-            </button>
+        {hasPublishedVersion && (
+          <button
+            className="button primary"
+            onClick={() => onOpenArtifact(artifact, "published")}
+            disabled={
+              openingArtifactId === `${artifact.artifact_id}:published`
+            }
+          >
+            {openingArtifactId === `${artifact.artifact_id}:published`
+              ? "Opening..."
+              : "Open Dashboard"}
+          </button>
+        )}
 
-            {hasPreviewVersion && (
-              <button
-                className="button ghost"
-                onClick={() => onOpenArtifact(artifact, "preview")}
-                disabled={
-                  openingArtifactId === `${artifact.artifact_id}:preview`
-                }
-              >
-                {openingArtifactId === `${artifact.artifact_id}:preview`
-                  ? "Opening..."
-                  : "Preview"}
-              </button>
-            )}
-          </>
-        ) : hasExternalUrl ? (
+        {hasPreviewVersion && (
+          <button
+            className="button ghost"
+            onClick={() => onOpenArtifact(artifact, "preview")}
+            disabled={
+              openingArtifactId === `${artifact.artifact_id}:preview`
+            }
+          >
+            {openingArtifactId === `${artifact.artifact_id}:preview`
+              ? "Opening..."
+              : "Preview"}
+          </button>
+        )}
+
+        {!hasPublishedVersion && !hasPreviewVersion && hasExternalUrl && (
           <a
             className="button primary"
             href={artifact.artifact_url}
@@ -871,7 +875,9 @@ function DashboardArtifactCard({
           >
             Open Dashboard
           </a>
-        ) : (
+        )}
+
+        {!hasPublishedVersion && !hasPreviewVersion && !hasExternalUrl && (
           <button className="button disabled" disabled>
             Coming Soon
           </button>
@@ -880,7 +886,6 @@ function DashboardArtifactCard({
     </article>
   );
 }
-
 function EmployeesTab({
   employeeCards,
   navigation,
