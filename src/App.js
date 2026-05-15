@@ -1119,114 +1119,115 @@ function ProjectsTab({
       </div>
 
       {projectTiles.length === 0 ? (
-        <EmptyState title="No project insight tiles have been created for this project type yet." />
-      ) : (
-        <div className="card-grid">
-  {projectTiles.map((tile) => {
-    const artifactId = tile.artifact_id || tile.project_tile_id;
-    const hasPublishedVersion = Boolean(tile.current_published_version_id);
-    const hasPreviewVersion = Boolean(tile.current_preview_version_id);
-    const hasExternalUrl = Boolean(tile.artifact_url);
-    const isAvailable =
-      hasPublishedVersion || hasPreviewVersion || hasExternalUrl;
+  <EmptyState title="No project insight tiles have been created for this project type yet." />
+) : (
+  <div className="card-grid">
+    {projectTiles.map((tile) => {
+      const artifactId = tile.artifact_id || tile.project_tile_id;
+      const hasPublishedVersion = Boolean(tile.current_published_version_id);
+      const hasPreviewVersion = Boolean(tile.current_preview_version_id);
+      const hasExternalUrl = Boolean(tile.artifact_url);
 
-    const statusLabel = hasPublishedVersion
-      ? tile.status || "Active"
-      : hasPreviewVersion
-      ? "Preview Ready"
-      : hasExternalUrl
-      ? tile.status || "Active"
-      : "Coming Soon";
+      const isAvailable =
+        hasPublishedVersion || hasPreviewVersion || hasExternalUrl;
 
-    return (
-      <article key={artifactId} className="dashboard-card">
-        <div className="card-top">
-          <div className="card-icon">🏗️</div>
+      const statusLabel = hasPublishedVersion
+        ? tile.status || "Active"
+        : hasPreviewVersion
+        ? "Preview Ready"
+        : hasExternalUrl
+        ? tile.status || "Active"
+        : "Coming Soon";
 
-          <span className={isAvailable ? "status active" : "status pending"}>
-            {statusLabel}
-          </span>
-        </div>
+      return (
+        <article key={artifactId} className="dashboard-card">
+          <div className="card-top">
+            <div className="card-icon">🏗️</div>
 
-        <h3>{tile.tile_title || artifactId}</h3>
+            <span className={isAvailable ? "status active" : "status pending"}>
+              {statusLabel}
+            </span>
+          </div>
 
-        <p>
-          {getProjectTypeLabel(selectedProject)} insight tile for{" "}
-          {selectedProject.job_name}.
-        </p>
+          <h3>{tile.tile_title || artifactId}</h3>
 
-        <div className="meta-stack">
-          <span>
-            Project: {selectedProject.job_number || selectedProject.project_id}
-          </span>
-          <span>Tile key: {tile.tile_key}</span>
-          <span>Type: {formatText(tile.artifact_type)}</span>
-          <span>ID: {artifactId}</span>
-        </div>
+          <p>
+            {getProjectTypeLabel(selectedProject)} insight tile for{" "}
+            {selectedProject.job_name}.
+          </p>
 
-        <div className="card-actions">
-          {hasPublishedVersion && (
-            <button
-              className="button primary"
-              onClick={() =>
-                onOpenArtifact(
-                  {
-                    ...tile,
-                    artifact_id: artifactId,
-                  },
-                  "published"
-                )
-              }
-              disabled={openingArtifactId === `${artifactId}:published`}
-            >
-              {openingArtifactId === `${artifactId}:published`
-                ? "Opening..."
-                : "Open Dashboard"}
-            </button>
-          )}
+          <div className="meta-stack">
+            <span>
+              Project: {selectedProject.job_number || selectedProject.project_id}
+            </span>
+            <span>Tile key: {tile.tile_key}</span>
+            <span>Type: {formatText(tile.artifact_type)}</span>
+            <span>ID: {artifactId}</span>
+          </div>
 
-          {hasPreviewVersion && (
-            <button
-              className="button ghost"
-              onClick={() =>
-                onOpenArtifact(
-                  {
-                    ...tile,
-                    artifact_id: artifactId,
-                  },
-                  "preview"
-                )
-              }
-              disabled={openingArtifactId === `${artifactId}:preview`}
-            >
-              {openingArtifactId === `${artifactId}:preview`
-                ? "Opening..."
-                : "Preview"}
-            </button>
-          )}
+          <div className="card-actions">
+            {hasPublishedVersion && (
+              <button
+                className="button primary"
+                onClick={() =>
+                  onOpenArtifact(
+                    {
+                      ...tile,
+                      artifact_id: artifactId,
+                    },
+                    "published"
+                  )
+                }
+                disabled={openingArtifactId === `${artifactId}:published`}
+              >
+                {openingArtifactId === `${artifactId}:published`
+                  ? "Opening..."
+                  : "Open Dashboard"}
+              </button>
+            )}
 
-          {!hasPublishedVersion && !hasPreviewVersion && hasExternalUrl && (
-            <a
-              className="button primary"
-              href={tile.artifact_url}
-              target="_blank"
-              rel="noreferrer"
-            >
-              Open Dashboard
-            </a>
-          )}
+            {hasPreviewVersion && (
+              <button
+                className="button ghost"
+                onClick={() =>
+                  onOpenArtifact(
+                    {
+                      ...tile,
+                      artifact_id: artifactId,
+                    },
+                    "preview"
+                  )
+                }
+                disabled={openingArtifactId === `${artifactId}:preview`}
+              >
+                {openingArtifactId === `${artifactId}:preview`
+                  ? "Opening..."
+                  : "Preview"}
+              </button>
+            )}
 
-          {!hasPublishedVersion && !hasPreviewVersion && !hasExternalUrl && (
-            <button className="button disabled" disabled>
-              Coming Soon
-            </button>
-          )}
-        </div>
-      </article>
-    );
-  })}
-</div>
-      )}
+            {!hasPublishedVersion && !hasPreviewVersion && hasExternalUrl && (
+              <a
+                className="button primary"
+                href={tile.artifact_url}
+                target="_blank"
+                rel="noreferrer"
+              >
+                Open Dashboard
+              </a>
+            )}
+
+            {!hasPublishedVersion && !hasPreviewVersion && !hasExternalUrl && (
+              <button className="button disabled" disabled>
+                Coming Soon
+              </button>
+            )}
+          </div>
+        </article>
+      );
+    })}
+  </div>
+)}
     </section>
   );
 }
