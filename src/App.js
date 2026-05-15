@@ -463,6 +463,7 @@ const projects = useMemo(
     openingArtifactId={openingArtifactId}
   />
 )}
+
           </>
         )}
       </main>
