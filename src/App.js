@@ -1607,18 +1607,7 @@ function getGreeting() {
   return "Good evening";
 }
 
-function summarizeBy(rows, fieldName) {
-  const counts = new Map();
 
-  rows.forEach((row) => {
-    const key = row[fieldName] || "Unassigned";
-    counts.set(key, (counts.get(key) || 0) + 1);
-  });
-
-  return Array.from(counts.entries())
-    .map(([name, count]) => ({ name, count }))
-    .sort((a, b) => b.count - a.count);
-}
 
 function escapeHtml(value) {
   return String(value || "")
