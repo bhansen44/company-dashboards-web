@@ -272,16 +272,22 @@ const projects = useMemo(
   () => dashboardData?.projects ?? [],
   [dashboardData]
 );
+const dashboardCoverMetrics = useMemo(
+  () => dashboardData?.dashboardCoverMetrics ?? [],
+  [dashboardData]
+);
+
+const currentDashboardCoverScope = useMemo(
+  () => getDashboardCoverScopeKey(navigation),
+  [navigation]
+);
+
 const executiveMetrics = useMemo(() => {
-  const metrics = dashboardData?.executiveMetrics;
-
-  if (Array.isArray(metrics) && metrics.length > 0) {
-    return metrics;
-  }
-
-  return DEFAULT_EXECUTIVE_METRICS;
-}, [dashboardData]);
-  const artifactsByDepartment = useMemo(() => {
+  return selectDashboardCoverMetrics(
+    dashboardCoverMetrics,
+    currentDashboardCoverScope
+  );
+}, [dashboardCoverMetrics, currentDashboardCoverScope]);  const artifactsByDepartment = useMemo(() => {
     const grouped = {};
 
     artifacts.forEach((artifact) => {
@@ -1569,7 +1575,111 @@ function projectTypeIcon(label) {
 
   return icons[label] || "🏗️";
 }
+function normalizeDashboardCoverScope(value) {
+  const normalized = String(value || "")
+    .trim()
+    .toLowerCase()
+    .replace(/&/g, "and")
+    .replace(/[^a-z0-9]+/g, "_")
+    .replace(/_+/g, "_")
+    .replace(/^_|_$/g, "");
 
+  const aliases = {
+    overview: "overview",
+    executive_stats: "overview",
+
+    administration: "administration",
+    general_administration: "administration",
+    finance: "administration",
+    human_resources: "administration",
+
+    compliance: "compliance",
+    general_compliance: "compliance",
+    ehs: "compliance",
+    project_controls: "compliance",
+
+    corporate: "corporate",
+
+    gc_operations: "gc_ops",
+    gc_ops: "gc_ops",
+
+    information_technology: "it",
+    it: "it",
+
+    preconstruction: "preconstruction",
+    general_preconstruction: "preconstruction",
+    design_engineering: "preconstruction",
+    estimating: "preconstruction",
+    division_management: "preconstruction",
+    division_mangement: "preconstruction",
+
+    program_management: "program_management",
+    program_mgt: "program_management",
+    program_management_all_groups: "program_management",
+    cold_storage_distribution: "program_management",
+    heavy_industrial: "program_management",
+    food_beverage: "program_management",
+    cost_analytics: "program_management",
+    marketing: "program_management",
+
+    steel_and_thermal: "steel_thermal",
+    steel_thermal: "steel_thermal",
+    s_and_t: "steel_thermal",
+  };
+
+  return aliases[normalized] || normalized || "overview";
+}
+
+function getDashboardCoverScopeKey(navigation) {
+  if (navigation.section === "dashboards" && navigation.departmentId) {
+    return normalizeDashboardCoverScope(navigation.departmentId);
+  }
+
+  if (navigation.section === "employees" && navigation.employeeDepartmentId) {
+    return normalizeDashboardCoverScope(navigation.employeeDepartmentId);
+  }
+
+  if (navigation.section === "projects" && navigation.projectTypeLabel) {
+    const projectTypeScopeMap = {
+      PSE: "preconstruction",
+      "CS & D": "program_management",
+      "Heavy Industrial": "program_management",
+      "Food & Bev": "program_management",
+      "Steel & Thermal": "steel_thermal",
+    };
+
+    return projectTypeScopeMap[navigation.projectTypeLabel] || "overview";
+  }
+
+  return "overview";
+}
+
+function selectDashboardCoverMetrics(metrics, scopeKey) {
+  if (!Array.isArray(metrics) || metrics.length === 0) {
+    return DEFAULT_EXECUTIVE_METRICS;
+  }
+
+  const normalizedScopeKey = normalizeDashboardCoverScope(scopeKey);
+
+  const scopedMetrics = metrics
+    .filter(
+      (metric) =>
+        normalizeDashboardCoverScope(metric.scope_key) === normalizedScopeKey
+    )
+    .sort((a, b) => Number(a.sort_order || 999) - Number(b.sort_order || 999));
+
+  if (scopedMetrics.length > 0) {
+    return scopedMetrics;
+  }
+
+  const overviewMetrics = metrics
+    .filter((metric) => metric.scope_key === "overview")
+    .sort((a, b) => Number(a.sort_order || 999) - Number(b.sort_order || 999));
+
+  return overviewMetrics.length > 0
+    ? overviewMetrics
+    : DEFAULT_EXECUTIVE_METRICS;
+}
 function formatText(value) {
   if (!value) {
     return "—";
