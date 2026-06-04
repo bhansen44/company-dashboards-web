@@ -156,7 +156,7 @@ module.exports = async function handler(req, res) {
   projects,
   projectAccessRules,
   projectTiles,
-  executiveMetrics,
+  dashboardCoverMetrics,
 ] = await Promise.all([
   supabaseSelect("hri_departments", "?select=*"),
   supabaseSelect("hri_artifacts", "?select=*"),
@@ -177,11 +177,15 @@ module.exports = async function handler(req, res) {
   supabaseSelect("hri_project_access_rules", "?select=*"),
   supabaseSelect("hri_project_tiles", "?select=*"),
   supabaseSelect(
-    "hri_executive_metrics",
-    "?select=metric_key,metric_label,display_value,raw_value,value_prefix,value_suffix,trend_label,trend_direction,source_label,calculation_note,source_a,source_b,source_c,status,sort_order,updated_at&status=eq.active&order=sort_order.asc"
+    "hri_dashboard_cover_metrics",
+    "?select=scope_key,scope_label,metric_key,metric_label,display_value,raw_value,value_prefix,value_suffix,trend_label,trend_direction,source_label,calculation_note,source_a,source_b,source_c,status,scope_sort_order,sort_order,updated_at&status=eq.active&order=scope_sort_order.asc,sort_order.asc"
   ),
 ]);
-
+const overviewExecutiveMetrics = (dashboardCoverMetrics || [])
+  .filter((metric) => metric.scope_key === "overview")
+  .sort(
+    (a, b) => Number(a.sort_order || 999) - Number(b.sort_order || 999)
+  );
     const roles = makeSet(dashboardAccessRows, "role");
     const departmentsAllowed = makeSet(dashboardAccessRows, "department");
     const subdepartmentsAllowed = makeSet(
@@ -351,7 +355,8 @@ const visibleArtifacts = activeArtifacts
     dashboardAccess: dashboardAccessRows,
     employeeCardAccess: cardAccessRows,
   },
-  executiveMetrics,
+  dashboardCoverMetrics,
+  executiveMetrics: overviewExecutiveMetrics,
   departments,
   artifacts: visibleArtifacts,
   employeeCards: visibleEmployeeCards,
