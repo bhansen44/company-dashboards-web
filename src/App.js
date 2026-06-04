@@ -1,3 +1,4 @@
+import hansenRiceLogo from "./assets/hansen-rice-logo.png";
 import { Auth0Provider, useAuth0 } from "@auth0/auth0-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import "./App.css";
@@ -312,12 +313,17 @@ const executiveMetrics = useMemo(() => {
     <div className="app-shell">
       <header className="topbar">
         <div className="brand-block">
-          <div className="brand-mark">HRI</div>
-
-          <div>
-            <div className="eyebrow">Secure Employee Portal</div>
-            <h1>Executive Dashboard</h1>
-          </div>
+         <div className="brand-lockup">
+  <img
+    src={hansenRiceLogo}
+    alt="Hansen-Rice"
+    className="brand-logo"
+  />
+  <div className="brand-copy">
+    <div className="brand-eyebrow">Secure Employee Portal</div>
+    <h1>Executive Dashboard</h1>
+  </div>
+</div>
         </div>
 
         <div className="topbar-actions">
@@ -436,18 +442,15 @@ const executiveMetrics = useMemo(() => {
 
             {navigation.section === "overview" && (
               <OverviewTab
-                dashboardData={dashboardData}
-                artifactsByDepartment={artifactsByDepartment}
-                departmentMap={departmentMap}
-                onOpenDepartment={(departmentId) =>
-                  navigateTo(makeNavigation("dashboards", { departmentId }))
-                }
-                onOpenDashboardRoot={() =>
-                  navigateTo(makeNavigation("dashboards"))
-                }
-                onOpenEmployeeRoot={() => navigateTo(makeNavigation("employees"))}
-                onOpenProjectRoot={() => navigateTo(makeNavigation("projects"))}
-              />
+  artifactsByDepartment={artifactsByDepartment}
+  departmentMap={departmentMap}
+  onOpenDepartment={(departmentId) =>
+    navigateTo(makeNavigation("dashboards", { departmentId }))
+  }
+  onOpenDashboardRoot={() =>
+    navigateTo(makeNavigation("dashboards"))
+  }
+/>
             )}
 
             {navigation.section === "dashboards" && (
@@ -604,21 +607,18 @@ function NavigationControls({ canGoBack, onBack, onHome, label }) {
 }
 
 function OverviewTab({
-  dashboardData,
   artifactsByDepartment,
   departmentMap,
   onOpenDepartment,
   onOpenDashboardRoot,
-  onOpenEmployeeRoot,
-  onOpenProjectRoot,
 }) {
-  const departments = Object.entries(artifactsByDepartment).map(
-    ([departmentId, artifacts]) => ({
+  const departments = Object.entries(artifactsByDepartment)
+    .filter(([departmentId]) => departmentId !== "project_pages")
+    .map(([departmentId, artifacts]) => ({
       id: departmentId,
       name: getDepartmentName(departmentId, departmentMap),
       artifacts,
-    })
-  );
+    }));
 
   departments.sort((a, b) => a.name.localeCompare(b.name));
 
@@ -648,54 +648,6 @@ function OverviewTab({
               onClick={() => onOpenDepartment(department.id)}
             />
           ))}
-        </div>
-      </section>
-
-      <section className="panel">
-        <div className="section-heading compact">
-          <div>
-            <div className="eyebrow">Visible Projects</div>
-            <h2>Project access</h2>
-          </div>
-
-          <button className="button ghost" onClick={onOpenProjectRoot}>
-            Open
-          </button>
-        </div>
-
-        <div className="mini-list">
-          {summarizeBy(dashboardData.projects || [], "project_type_label").map(
-            (item) => (
-              <div key={item.name} className="mini-row">
-                <span>{item.name || "Unassigned"}</span>
-                <strong>{item.count}</strong>
-              </div>
-            )
-          )}
-        </div>
-      </section>
-
-      <section className="panel">
-        <div className="section-heading compact">
-          <div>
-            <div className="eyebrow">Employee Cards</div>
-            <h2>Card visibility</h2>
-          </div>
-
-          <button className="button ghost" onClick={onOpenEmployeeRoot}>
-            Open
-          </button>
-        </div>
-
-        <div className="mini-list">
-          {summarizeBy(dashboardData.employeeCards || [], "department_id")
-            .slice(0, 8)
-            .map((item) => (
-              <div key={item.name} className="mini-row">
-                <span>{getDepartmentName(item.name, departmentMap)}</span>
-                <strong>{item.count}</strong>
-              </div>
-            ))}
         </div>
       </section>
     </div>
