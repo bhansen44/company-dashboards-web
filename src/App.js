@@ -311,55 +311,70 @@ const executiveMetrics = useMemo(() => {
 
   return (
     <div className="app-shell">
-      <header className="topbar">
-        <div className="brand-block">
-         <div className="brand-lockup">
-  <img
-    src={hansenRiceLogo}
-    alt="Hansen-Rice"
-    className="brand-logo"
-  />
-  <div className="brand-copy">
-    <div className="brand-eyebrow">Secure Employee Portal</div>
-    <h1>Executive Dashboard</h1>
+      <header className="topbar executive-topbar">
+  <div className="topbar-left">
+    <img
+      src={hansenRiceLogo}
+      alt="Hansen-Rice"
+      className="brand-logo topbar-logo"
+    />
+
+    <div className="user-pill topbar-user-pill">
+      <span className="user-avatar">
+        {getInitials(currentUser?.name || user?.name || user?.email)}
+      </span>
+
+      <span className="user-pill-text">
+        <strong>{currentUser?.name || user?.name || user?.email}</strong>
+        <small>{currentUser?.access_level || "Loading access..."}</small>
+      </span>
+    </div>
+
+    <div className="topbar-current-view">
+      <span className="topbar-current-label">Current View</span>
+      <strong>
+        {dashboardData
+          ? getNavigationLabel(navigation, departmentMap, projects)
+          : "Loading..."}
+      </strong>
+    </div>
   </div>
-</div>
-        </div>
 
-        <div className="topbar-actions">
-          <div className="user-pill">
-            <span className="user-avatar">
-              {getInitials(currentUser?.name || user?.name || user?.email)}
-            </span>
+  <div className="topbar-actions">
+    <button className="button ghost" onClick={goHome}>
+      Home
+    </button>
 
-            <span className="user-pill-text">
-              <strong>{currentUser?.name || user?.name || user?.email}</strong>
-              <small>{currentUser?.access_level || "Loading access..."}</small>
-            </span>
-          </div>
+    <button
+      className="button ghost"
+      onClick={goBack}
+      disabled={historyStack.length === 0}
+    >
+      ← Back
+    </button>
 
-          <button
-            className="button ghost"
-            onClick={loadDashboardData}
-            disabled={apiLoading}
-          >
-            {apiLoading ? "Refreshing..." : "Refresh"}
-          </button>
+    <button
+      className="button ghost"
+      onClick={loadDashboardData}
+      disabled={apiLoading}
+    >
+      {apiLoading ? "Refreshing..." : "Refresh"}
+    </button>
 
-          <button
-            className="button dark"
-            onClick={() =>
-              logout({
-                logoutParams: {
-                  returnTo: window.location.origin,
-                },
-              })
-            }
-          >
-            Logout
-          </button>
-        </div>
-      </header>
+    <button
+      className="button dark"
+      onClick={() =>
+        logout({
+          logoutParams: {
+            returnTo: window.location.origin,
+          },
+        })
+      }
+    >
+      Logout
+    </button>
+  </div>
+</header>
 
       <main className="page">
         {apiError && (
@@ -384,12 +399,7 @@ const executiveMetrics = useMemo(() => {
 
         {dashboardData && (
   <>
-    <NavigationControls
-      canGoBack={historyStack.length > 0}
-      onBack={goBack}
-      onHome={goHome}
-      label={getNavigationLabel(navigation, departmentMap, projects)}
-    />
+  
 
     <HeroSection
       dashboardData={dashboardData}
@@ -581,26 +591,6 @@ function HeroSection({ dashboardData, executiveMetrics }) {
         {metricsToRender.slice(0, 6).map((metric) => (
           <ExecutiveMetricCard key={metric.metric_key} metric={metric} />
         ))}
-      </div>
-    </section>
-  );
-}
-function NavigationControls({ canGoBack, onBack, onHome, label }) {
-  return (
-    <section className="navigation-row">
-      <div className="breadcrumb">
-        <span className="eyebrow">Current View</span>
-        <strong>{label}</strong>
-      </div>
-
-      <div className="navigation-actions">
-        <button className="button ghost" onClick={onHome}>
-          Home
-        </button>
-
-        <button className="button ghost" onClick={onBack} disabled={!canGoBack}>
-          ← Back
-        </button>
       </div>
     </section>
   );

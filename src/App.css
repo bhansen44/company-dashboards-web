@@ -953,3 +953,104 @@ a {
   flex-direction: column;
   justify-content: center;
 }
+/* Executive topbar layout */
+.executive-topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1.25rem;
+  padding: 0.85rem 1.5rem;
+}
+
+.topbar-left {
+  display: flex;
+  align-items: center;
+  gap: 1.1rem;
+  min-width: 0;
+  flex: 1;
+}
+
+.topbar-logo {
+  height: 46px;
+  width: auto;
+  max-width: 250px;
+  object-fit: contain;
+  display: block;
+  flex-shrink: 0;
+}
+
+.topbar-user-pill {
+  flex-shrink: 0;
+}
+
+.topbar-current-view {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  min-width: 220px;
+  max-width: 520px;
+  padding: 0.45rem 0.85rem;
+  border-left: 1px solid #d8e2e6;
+  color: #0f2530;
+}
+
+.topbar-current-label {
+  font-size: 0.72rem;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #00838f;
+  line-height: 1.1;
+}
+
+.topbar-current-view strong {
+  display: block;
+  margin-top: 0.18rem;
+  font-size: 0.92rem;
+  line-height: 1.25;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.executive-topbar .topbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  flex-shrink: 0;
+}
+
+@media (max-width: 1200px) {
+  .executive-topbar {
+    flex-wrap: wrap;
+  }
+
+  .topbar-left {
+    width: 100%;
+  }
+
+  .executive-topbar .topbar-actions {
+    width: 100%;
+    justify-content: flex-end;
+  }
+}
+
+@media (max-width: 760px) {
+  .topbar-left {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .topbar-current-view {
+    width: 100%;
+    max-width: none;
+    border-left: none;
+    border-top: 1px solid #d8e2e6;
+    padding-left: 0;
+  }
+
+  .executive-topbar .topbar-actions {
+    justify-content: flex-start;
+    flex-wrap: wrap;
+  }
+}
