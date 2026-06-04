@@ -566,7 +566,7 @@ function HeroSection({ dashboardData, executiveMetrics }) {
   return (
     <section className="hero executive-hero">
       <div className="hero-copy compact-hero-copy">
-        <div className="eyebrow">Current Access</div>
+        
 
         <h2>
           {getGreeting()}, {firstName(user?.name)}.
@@ -1405,7 +1405,20 @@ function groupEmployeesByDepartment(employees, departmentMap) {
   const groups = new Map();
 
   employees.forEach((employee) => {
-    const id = employee.department_id || "other";
+    const rawId = employee.department_id;
+    const normalizedId = String(rawId || "").trim().toLowerCase();
+
+    if (
+      !normalizedId ||
+      normalizedId === "other" ||
+      normalizedId === "unassigned" ||
+      normalizedId === "null" ||
+      normalizedId === "undefined"
+    ) {
+      return;
+    }
+
+    const id = rawId;
 
     if (!groups.has(id)) {
       groups.set(id, {
