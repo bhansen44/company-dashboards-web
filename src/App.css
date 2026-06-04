@@ -848,4 +848,91 @@ a {
   .navigation-actions {
     width: 100%;
   }
+}/* Executive overview hero layout */
+.executive-hero {
+  display: grid;
+  grid-template-columns: minmax(340px, 0.8fr) minmax(720px, 1.4fr);
+  gap: 1.25rem;
+  align-items: stretch;
+}
+
+.compact-hero-copy {
+  min-height: 145px;
+  padding: 2rem 2.25rem;
+}
+
+.compact-hero-copy h2 {
+  font-size: clamp(2.3rem, 4vw, 4rem);
+  line-height: 1;
+  margin-bottom: 1rem;
+}
+
+.compact-hero-copy p {
+  max-width: 520px;
+  font-size: 1rem;
+}
+
+.executive-metric-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(180px, 1fr));
+  gap: 1rem;
+}
+
+.executive-metric-card {
+  min-height: 105px;
+  justify-content: center;
+  position: relative;
+}
+
+.executive-metric-card span {
+  font-size: 0.78rem;
+  line-height: 1.25;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.executive-metric-value {
+  font-size: clamp(1.65rem, 2.6vw, 2.4rem);
+  line-height: 1.05;
+  margin-top: 0.35rem;
+}
+
+.executive-metric-note {
+  display: block;
+  margin-top: 0.4rem;
+  font-size: 0.72rem;
+  color: #64748b;
+  font-weight: 700;
+}
+
+.executive-metric-card.trend-up {
+  border-left: 5px solid #4a7c59;
+}
+
+.executive-metric-card.trend-down {
+  border-left: 5px solid #c84949;
+}
+
+.executive-metric-card.trend-warning {
+  border-left: 5px solid #d4a574;
+}
+
+.executive-metric-card.trend-neutral {
+  border-left: 5px solid #d8e2e6;
+}
+
+@media (max-width: 1200px) {
+  .executive-hero {
+    grid-template-columns: 1fr;
+  }
+
+  .executive-metric-grid {
+    grid-template-columns: repeat(3, minmax(160px, 1fr));
+  }
+}
+
+@media (max-width: 760px) {
+  .executive-metric-grid {
+    grid-template-columns: 1fr;
+  }
 }

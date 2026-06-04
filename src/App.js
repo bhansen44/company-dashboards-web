@@ -16,7 +16,50 @@ function makeNavigation(section = "overview", overrides = {}) {
     ...overrides,
   };
 }
-
+const DEFAULT_EXECUTIVE_METRICS = [
+  {
+    metric_key: "sales_vs_goal_ytd",
+    metric_label: "Sales versus Goal YTD",
+    display_value: "TBD",
+    trend_label: "Awaiting source data",
+    trend_direction: "neutral",
+  },
+  {
+    metric_key: "pipeline_score",
+    metric_label: "Pipeline Score",
+    display_value: "TBD",
+    trend_label: "Awaiting source data",
+    trend_direction: "neutral",
+  },
+  {
+    metric_key: "ga_vs_budget_ytd",
+    metric_label: "G&A versus Budget YTD",
+    display_value: "TBD",
+    trend_label: "Awaiting source data",
+    trend_direction: "neutral",
+  },
+  {
+    metric_key: "gain_loss_ytd",
+    metric_label: "Gain/Loss YTD",
+    display_value: "TBD",
+    trend_label: "Awaiting source data",
+    trend_direction: "neutral",
+  },
+  {
+    metric_key: "iso_compliance_score_ytd",
+    metric_label: "ISO Compliance Score YTD",
+    display_value: "TBD",
+    trend_label: "Awaiting source data",
+    trend_direction: "neutral",
+  },
+  {
+    metric_key: "average_employee_score",
+    metric_label: "Average Employee Score",
+    display_value: "TBD",
+    trend_label: "Awaiting source data",
+    trend_direction: "neutral",
+  },
+];
 export default function App() {
   return (
     <Auth0Provider
@@ -228,7 +271,15 @@ const projects = useMemo(
   () => dashboardData?.projects ?? [],
   [dashboardData]
 );
+const executiveMetrics = useMemo(() => {
+  const metrics = dashboardData?.executiveMetrics;
 
+  if (Array.isArray(metrics) && metrics.length > 0) {
+    return metrics;
+  }
+
+  return DEFAULT_EXECUTIVE_METRICS;
+}, [dashboardData]);
   const artifactsByDepartment = useMemo(() => {
     const grouped = {};
 
@@ -245,16 +296,7 @@ const projects = useMemo(
     return grouped;
   }, [artifacts]);
 
-  const projectTileCount = useMemo(() => {
-    if (dashboardData?.counts?.projectTiles !== undefined) {
-      return dashboardData.counts.projectTiles;
-    }
-
-    return projects.reduce(
-      (total, project) => total + (project.project_tiles || []).length,
-      0
-    );
-  }, [dashboardData, projects]);
+  
 
   const currentUser = dashboardData?.user;
 
@@ -335,48 +377,49 @@ const projects = useMemo(
         )}
 
         {dashboardData && (
-          <>
-            <HeroSection
-              dashboardData={dashboardData}
-              projectTileCount={projectTileCount}
-            />
+  <>
+    <NavigationControls
+      canGoBack={historyStack.length > 0}
+      onBack={goBack}
+      onHome={goHome}
+      label={getNavigationLabel(navigation, departmentMap, projects)}
+    />
 
-            <nav className="tabbar" aria-label="Dashboard sections">
-              <button
-                className={navigation.section === "overview" ? "active" : ""}
-                onClick={() => navigateTo(makeNavigation("overview"))}
-              >
-                Overview
-              </button>
+    <HeroSection
+      dashboardData={dashboardData}
+      executiveMetrics={executiveMetrics}
+    />
 
-              <button
-                className={navigation.section === "dashboards" ? "active" : ""}
-                onClick={() => navigateTo(makeNavigation("dashboards"))}
-              >
-                Dashboard Tiles
-              </button>
+    <nav className="tabbar" aria-label="Dashboard sections">
+      <button
+        className={navigation.section === "overview" ? "active" : ""}
+        onClick={() => navigateTo(makeNavigation("overview"))}
+      >
+        Overview
+      </button>
 
-              <button
-                className={navigation.section === "employees" ? "active" : ""}
-                onClick={() => navigateTo(makeNavigation("employees"))}
-              >
-                Employee Cards
-              </button>
+      <button
+        className={navigation.section === "dashboards" ? "active" : ""}
+        onClick={() => navigateTo(makeNavigation("dashboards"))}
+      >
+        Dashboard Tiles
+      </button>
 
-              <button
-                className={navigation.section === "projects" ? "active" : ""}
-                onClick={() => navigateTo(makeNavigation("projects"))}
-              >
-                Project Insights
-              </button>
-            </nav>
+      <button
+        className={navigation.section === "employees" ? "active" : ""}
+        onClick={() => navigateTo(makeNavigation("employees"))}
+      >
+        Employee Cards
+      </button>
 
-            <NavigationControls
-              canGoBack={historyStack.length > 0}
-              onBack={goBack}
-              onHome={goHome}
-              label={getNavigationLabel(navigation, departmentMap, projects)}
-            />
+      <button
+        className={navigation.section === "projects" ? "active" : ""}
+        onClick={() => navigateTo(makeNavigation("projects"))}
+      >
+        Project Insights
+      </button>
+    </nav>
+            
 
             <section className="toolbar">
               <div>
@@ -509,12 +552,17 @@ function LoginPage({ onLogin }) {
   );
 }
 
-function HeroSection({ dashboardData, projectTileCount }) {
+function HeroSection({ dashboardData, executiveMetrics }) {
   const user = dashboardData.user;
 
+  const metricsToRender =
+    Array.isArray(executiveMetrics) && executiveMetrics.length > 0
+      ? executiveMetrics
+      : DEFAULT_EXECUTIVE_METRICS;
+
   return (
-    <section className="hero">
-      <div className="hero-copy">
+    <section className="hero executive-hero">
+      <div className="hero-copy compact-hero-copy">
         <div className="eyebrow">Current Access</div>
 
         <h2>
@@ -522,22 +570,18 @@ function HeroSection({ dashboardData, projectTileCount }) {
         </h2>
 
         <p>
-          You are signed in with <strong>{user?.access_level}</strong> access.
-          The cards below are filtered through Supabase based on your current HRI
-          permissions.
+          Signed in with <strong>{user?.access_level}</strong> access.
         </p>
       </div>
 
-      <div className="stat-grid">
-        <StatCard label="Dashboard Tiles" value={dashboardData.counts.artifacts} />
-        <StatCard label="Employee Cards" value={dashboardData.counts.employeeCards} />
-        <StatCard label="Project Insights" value={dashboardData.counts.projects} />
-        <StatCard label="Project Tile Placeholders" value={projectTileCount || 0} />
+      <div className="stat-grid executive-metric-grid">
+        {metricsToRender.slice(0, 6).map((metric) => (
+          <ExecutiveMetricCard key={metric.metric_key} metric={metric} />
+        ))}
       </div>
     </section>
   );
 }
-
 function NavigationControls({ canGoBack, onBack, onHome, label }) {
   return (
     <section className="navigation-row">
@@ -1250,11 +1294,20 @@ function DepartmentCard({ title, subtitle, icon, onClick }) {
   );
 }
 
-function StatCard({ label, value, small }) {
+function ExecutiveMetricCard({ metric }) {
+  const trendDirection = metric.trend_direction || "neutral";
+
   return (
-    <div className="stat-card">
-      <span>{label}</span>
-      <strong className={small ? "small-stat" : ""}>{value}</strong>
+    <div className={`stat-card executive-metric-card trend-${trendDirection}`}>
+      <span>{metric.metric_label}</span>
+
+      <strong className="executive-metric-value">
+        {metric.display_value || "TBD"}
+      </strong>
+
+      {metric.trend_label && (
+        <small className="executive-metric-note">{metric.trend_label}</small>
+      )}
     </div>
   );
 }
