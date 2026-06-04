@@ -71,7 +71,6 @@ function isArchivedRow(row) {
 }
 
 function safeEmployeeCard(employee) {
-}function safeEmployeeCard(employee) {
   return {
     employee_email: employee.employee_email,
     employee_name: employee.employee_name,
@@ -82,7 +81,6 @@ function safeEmployeeCard(employee) {
     access_level: employee.access_level,
   };
 }
-
 function sortArtifacts(a, b) {
   const deptCompare = String(a.department_id || "").localeCompare(
     String(b.department_id || "")
@@ -149,35 +147,40 @@ module.exports = async function handler(req, res) {
       });
     }
 
-    const [
-      departments,
-      artifacts,
-      dashboardAccessRows,
-      cardAccessRows,
-      allEmployees,
-      projects,
-      projectAccessRules,
-      projectTiles,
-    ] = await Promise.all([
-      supabaseSelect("hri_departments", "?select=*"),
-      supabaseSelect("hri_artifacts", "?select=*"),
-      supabaseSelect(
-        "hri_employee_dashboard_access",
-        `?employee_email=eq.${encodeURIComponent(
-          email
-        )}&select=access_type,access_value`
-      ),
-      supabaseSelect(
-        "hri_employee_card_access",
-        `?employee_email=eq.${encodeURIComponent(
-          email
-        )}&select=scope,scope_value`
-      ),
-      supabaseSelect("hri_employees", "?select=*"),
-      supabaseSelect("hri_projects", "?select=*"),
-      supabaseSelect("hri_project_access_rules", "?select=*"),
-      supabaseSelect("hri_project_tiles", "?select=*"),
-    ]);
+   const [
+  departments,
+  artifacts,
+  dashboardAccessRows,
+  cardAccessRows,
+  allEmployees,
+  projects,
+  projectAccessRules,
+  projectTiles,
+  executiveMetrics,
+] = await Promise.all([
+  supabaseSelect("hri_departments", "?select=*"),
+  supabaseSelect("hri_artifacts", "?select=*"),
+  supabaseSelect(
+    "hri_employee_dashboard_access",
+    `?employee_email=eq.${encodeURIComponent(
+      email
+    )}&select=access_type,access_value`
+  ),
+  supabaseSelect(
+    "hri_employee_card_access",
+    `?employee_email=eq.${encodeURIComponent(
+      email
+    )}&select=scope,scope_value`
+  ),
+  supabaseSelect("hri_employees", "?select=*"),
+  supabaseSelect("hri_projects", "?select=*"),
+  supabaseSelect("hri_project_access_rules", "?select=*"),
+  supabaseSelect("hri_project_tiles", "?select=*"),
+  supabaseSelect(
+    "hri_executive_metrics",
+    "?select=metric_key,metric_label,display_value,raw_value,value_prefix,value_suffix,trend_label,trend_direction,source_label,calculation_note,source_a,source_b,source_c,status,sort_order,updated_at&status=eq.active&order=sort_order.asc"
+  ),
+]);
 
     const roles = makeSet(dashboardAccessRows, "role");
     const departmentsAllowed = makeSet(dashboardAccessRows, "department");
@@ -326,33 +329,34 @@ const visibleArtifacts = activeArtifacts
         )
       );
     return res.status(200).json({
-      user: {
-        email,
-        name: currentEmployee.employee_name,
-        title: currentEmployee.title,
-        employee_code: currentEmployee.employee_code,
-        access_level: currentEmployee.access_level,
-        landing_page: currentEmployee.landing_page,
-        employee_card_access_raw: currentEmployee.employee_card_access_raw,
-      },
-   counts: {
-  artifacts: visibleArtifacts.length,
-  employeeCards: visibleEmployeeCards.length,
-  projects: visibleProjects.length,
-  projectTiles: visibleProjects.reduce(
-    (sum, project) => sum + (project.project_tiles || []).length,
-    0
-  ),
-},
-      access: {
-        dashboardAccess: dashboardAccessRows,
-        employeeCardAccess: cardAccessRows,
-      },
-      departments,
-      artifacts: visibleArtifacts,
-      employeeCards: visibleEmployeeCards,
-     projects: visibleProjects,
-    });
+  user: {
+    email,
+    name: currentEmployee.employee_name,
+    title: currentEmployee.title,
+    employee_code: currentEmployee.employee_code,
+    access_level: currentEmployee.access_level,
+    landing_page: currentEmployee.landing_page,
+    employee_card_access_raw: currentEmployee.employee_card_access_raw,
+  },
+  counts: {
+    artifacts: visibleArtifacts.length,
+    employeeCards: visibleEmployeeCards.length,
+    projects: visibleProjects.length,
+    projectTiles: visibleProjects.reduce(
+      (sum, project) => sum + (project.project_tiles || []).length,
+      0
+    ),
+  },
+  access: {
+    dashboardAccess: dashboardAccessRows,
+    employeeCardAccess: cardAccessRows,
+  },
+  executiveMetrics,
+  departments,
+  artifacts: visibleArtifacts,
+  employeeCards: visibleEmployeeCards,
+  projects: visibleProjects,
+});
   } catch (error) {
     console.error(error);
 
