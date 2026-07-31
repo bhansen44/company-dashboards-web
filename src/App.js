@@ -137,11 +137,15 @@ function Dashboard() {
         throw new Error("Could not read Auth0 ID token.");
       }
 
-      const response = await fetch("/api/dashboard", {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
+    const response = await fetch(`/api/dashboard?ts=${Date.now()}`, {
+  method: "GET",
+  cache: "no-store",
+  headers: {
+    Authorization: `Bearer ${token}`,
+    "Cache-Control": "no-cache",
+    Pragma: "no-cache",
+  },
+});
 
       const data = await response.json();
 
@@ -183,16 +187,24 @@ function Dashboard() {
           throw new Error("Could not read Auth0 ID token.");
         }
 
-        const response = await fetch(
-          `/api/artifact-html?artifactId=${encodeURIComponent(
-            artifact.artifact_id
-          )}&stage=${encodeURIComponent(stage)}`,
-          {
-            headers: {
-              Authorization: `Bearer ${token}`,
-            },
-          }
-        );
+       const versionId = artifact.current_published_version_id;
+
+const artifactRequestUrl =
+  `/api/artifact-html?artifactId=${encodeURIComponent(
+    artifact.artifact_id
+  )}&stage=published` +
+  `&versionId=${encodeURIComponent(versionId || "")}` +
+  `&ts=${Date.now()}`;
+
+const response = await fetch(artifactRequestUrl, {
+  method: "GET",
+  cache: "no-store",
+  headers: {
+    Authorization: `Bearer ${token}`,
+    "Cache-Control": "no-cache",
+    Pragma: "no-cache",
+  },
+});
 
         const contentType = response.headers.get("content-type") || "";
         const body = await response.text();
@@ -903,23 +915,34 @@ function DashboardsTab({
 
 function DashboardArtifactCard({
   artifact,
-  departmentMap,
   onOpenArtifact,
   openingArtifactId,
 }) {
   const hasPublishedVersion = Boolean(artifact.current_published_version_id);
-  const hasPreviewVersion = Boolean(artifact.current_preview_version_id);
   const hasExternalUrl = Boolean(artifact.artifact_url);
+  const hasPreviewOnly =
+    Boolean(artifact.current_preview_version_id) && !hasPublishedVersion;
 
-  const isAvailable = hasPublishedVersion || hasPreviewVersion || hasExternalUrl;
+  const isAvailable = hasPublishedVersion || hasExternalUrl;
 
-  const statusLabel = hasPublishedVersion
+  const statusLabel = isAvailable
     ? artifact.status || "Active"
-    : hasPreviewVersion
-    ? "Preview Ready"
-    : hasExternalUrl
-    ? artifact.status || "Active"
+    : hasPreviewOnly
+    ? "Publish Required"
     : "Coming Soon";
+
+  const displayType = isAvailable
+    ? cleanCardText(artifact.display_type) ||
+      formatText(artifact.artifact_type)
+    : "Placeholder";
+
+  const versionDate = getTileVersionDate(artifact, isAvailable);
+
+  const dataLink =
+    cleanCardText(artifact.data_link) ||
+    cleanCardText(artifact.artifact_url);
+
+  const hasClickableDataLink = isClickableLink(dataLink);
 
   return (
     <article className="dashboard-card">
@@ -932,22 +955,26 @@ function DashboardArtifactCard({
       </div>
 
       <h3>{artifact.tile_title || artifact.artifact_id}</h3>
-      <p>{artifact.source_name || "Dashboard artifact"}</p>
 
       <div className="meta-stack">
+        <span>Type: {displayType}</span>
+
+        <span>Version Date: {versionDate}</span>
+
         <span>
-          Department: {getDepartmentName(artifact.department_id, departmentMap)}
+          Data Link:{" "}
+          {dataLink ? (
+            hasClickableDataLink ? (
+              <a href={dataLink} target="_blank" rel="noreferrer">
+                Open Data Link
+              </a>
+            ) : (
+              dataLink
+            )
+          ) : (
+            "N/A"
+          )}
         </span>
-
-        {artifact.subdepartment_id && (
-          <span>
-            Subdepartment:{" "}
-            {getDepartmentName(artifact.subdepartment_id, departmentMap)}
-          </span>
-        )}
-
-        <span>Type: {formatText(artifact.artifact_type)}</span>
-        <span>ID: {artifact.artifact_id}</span>
       </div>
 
       <div className="card-actions">
@@ -965,21 +992,7 @@ function DashboardArtifactCard({
           </button>
         )}
 
-        {hasPreviewVersion && (
-          <button
-            className="button ghost"
-            onClick={() => onOpenArtifact(artifact, "preview")}
-            disabled={
-              openingArtifactId === `${artifact.artifact_id}:preview`
-            }
-          >
-            {openingArtifactId === `${artifact.artifact_id}:preview`
-              ? "Opening..."
-              : "Preview"}
-          </button>
-        )}
-
-        {!hasPublishedVersion && !hasPreviewVersion && hasExternalUrl && (
+        {!hasPublishedVersion && hasExternalUrl && (
           <a
             className="button primary"
             href={artifact.artifact_url}
@@ -990,16 +1003,15 @@ function DashboardArtifactCard({
           </a>
         )}
 
-        {!hasPublishedVersion && !hasPreviewVersion && !hasExternalUrl && (
+        {!hasPublishedVersion && !hasExternalUrl && (
           <button className="button disabled" disabled>
-            Coming Soon
+            {hasPreviewOnly ? "Publish Required" : "Coming Soon"}
           </button>
         )}
       </div>
     </article>
   );
-}
-function EmployeesTab({
+}function EmployeesTab({
   employeeCards,
   navigation,
   departmentMap,
@@ -1928,6 +1940,57 @@ function selectDashboardCoverMetrics(metrics, scopeKey) {
   return overviewMetrics.length > 0
     ? overviewMetrics
     : DEFAULT_EXECUTIVE_METRICS;
+}
+function cleanCardText(value) {
+  const text = String(value || "").trim();
+
+  if (!text) {
+    return "";
+  }
+
+  const normalized = text.toLowerCase();
+
+  if (
+    normalized === "n/a" ||
+    normalized === "na" ||
+    normalized === "none" ||
+    normalized === "null" ||
+    normalized === "-"
+  ) {
+    return "";
+  }
+
+  return text;
+}
+
+function isClickableLink(value) {
+  return /^https?:\/\//i.test(String(value || "").trim());
+}
+
+function getTileVersionDate(artifact, isAvailable) {
+  if (!isAvailable) {
+    return "N/A";
+  }
+
+  const explicitVersionDate = cleanCardText(artifact.version_date);
+
+  if (explicitVersionDate) {
+    return explicitVersionDate;
+  }
+
+  const typeText = String(
+    artifact.display_type || artifact.artifact_type || ""
+  ).toLowerCase();
+
+  if (
+    artifact.artifact_url ||
+    typeText.includes("power") ||
+    typeText.includes("sharepoint")
+  ) {
+    return "Live";
+  }
+
+  return "N/A";
 }
 function formatText(value) {
   if (!value) {

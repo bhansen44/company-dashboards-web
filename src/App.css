@@ -1112,3 +1112,12 @@ a {
   font-size: 0.75rem;
   font-weight: 700;
 }
+.dashboard-card .meta-stack a {
+  color: #004250;
+  font-weight: 800;
+  text-decoration: none;
+}
+
+.dashboard-card .meta-stack a:hover {
+  text-decoration: underline;
+}
