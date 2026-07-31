@@ -303,7 +303,85 @@ const executiveMetrics = useMemo(() => {
     return grouped;
   }, [artifacts]);
 
-  
+  const globalSearchResults = useMemo(() => {
+  if (!normalizedSearch) {
+    return {
+      artifacts: [],
+      employees: [],
+      projects: [],
+      projectTiles: [],
+    };
+  }
+
+  const matches = (...values) =>
+    values
+      .filter(Boolean)
+      .join(" ")
+      .toLowerCase()
+      .includes(normalizedSearch);
+
+  const artifactResults = artifacts.filter((artifact) =>
+    matches(
+      artifact.artifact_id,
+      artifact.tile_title,
+      artifact.source_name,
+      artifact.department_id,
+      artifact.subdepartment_id,
+      artifact.artifact_type,
+      artifact.status
+    )
+  );
+
+  const employeeResults = employeeCards.filter((employee) =>
+    matches(
+      employee.employee_name,
+      employee.employee_email,
+      employee.title,
+      employee.department_id,
+      employee.subdepartment_id,
+      employee.access_level
+    )
+  );
+
+  const projectResults = projects.filter((project) =>
+    matches(
+      project.project_id,
+      project.job_name,
+      project.job_number,
+      project.program_name,
+      project.project_type_label,
+      project.status,
+      project.visible_to_raw
+    )
+  );
+
+  const projectTileResults = projects.flatMap((project) =>
+    (project.project_tiles || [])
+      .filter((tile) =>
+        matches(
+          tile.tile_title,
+          tile.tile_key,
+          tile.status,
+          tile.artifact_id,
+          tile.project_tile_id,
+          project.job_name,
+          project.job_number,
+          project.project_type_label
+        )
+      )
+      .map((tile) => ({
+        ...tile,
+        project,
+      }))
+  );
+
+  return {
+    artifacts: artifactResults.slice(0, 20),
+    employees: employeeResults.slice(0, 20),
+    projects: projectResults.slice(0, 20),
+    projectTiles: projectTileResults.slice(0, 20),
+  };
+}, [normalizedSearch, artifacts, employeeCards, projects]);
 
   const currentUser = dashboardData?.user;
 
@@ -455,8 +533,48 @@ const executiveMetrics = useMemo(() => {
                 />
               </div>
             </section>
-
-            {navigation.section === "overview" && (
+{normalizedSearch && (
+  <GlobalSearchResults
+    results={globalSearchResults}
+    departmentMap={departmentMap}
+    onOpenDashboardTile={(artifact) => {
+      setSearchText("");
+      navigateTo(
+        makeNavigation("dashboards", {
+          departmentId: artifact.department_id,
+          subdepartmentId: artifact.subdepartment_id || null,
+        })
+      );
+    }}
+    onOpenEmployee={(employee) => {
+      setSearchText("");
+      navigateTo(
+        makeNavigation("employees", {
+          employeeDepartmentId: employee.department_id,
+        })
+      );
+    }}
+    onOpenProject={(project) => {
+      setSearchText("");
+      navigateTo(
+        makeNavigation("projects", {
+          projectTypeLabel: getProjectTypeLabel(project),
+          projectId: project.project_id,
+        })
+      );
+    }}
+    onOpenProjectTile={(tile) => {
+      setSearchText("");
+      navigateTo(
+        makeNavigation("projects", {
+          projectTypeLabel: getProjectTypeLabel(tile.project),
+          projectId: tile.project.project_id,
+        })
+      );
+    }}
+  />
+)}
+            {!normalizedSearch && navigation.section === "overview" && (
               <OverviewTab
   artifactsByDepartment={artifactsByDepartment}
   departmentMap={departmentMap}
@@ -469,7 +587,7 @@ const executiveMetrics = useMemo(() => {
 />
             )}
 
-            {navigation.section === "dashboards" && (
+            {!normalizedSearch && navigation.section === "dashboards" && (
               <DashboardsTab
                 artifacts={artifacts}
                 navigation={navigation}
@@ -491,7 +609,7 @@ const executiveMetrics = useMemo(() => {
               />
             )}
 
-            {navigation.section === "employees" && (
+            {!normalizedSearch && navigation.section === "employees" && (
               <EmployeesTab
                 employeeCards={employeeCards}
                 navigation={navigation}
@@ -505,7 +623,7 @@ const executiveMetrics = useMemo(() => {
               />
             )}
 
-            {navigation.section === "projects" && (
+            {!normalizedSearch && navigation.section === "projects" && (
   <ProjectsTab
     projects={projects}
     navigation={navigation}
@@ -1259,7 +1377,136 @@ function ExecutiveMetricCard({ metric }) {
     </div>
   );
 }
+function GlobalSearchResults({
+  results,
+  departmentMap,
+  onOpenDashboardTile,
+  onOpenEmployee,
+  onOpenProject,
+  onOpenProjectTile,
+}) {
+  const totalResults =
+    results.artifacts.length +
+    results.employees.length +
+    results.projects.length +
+    results.projectTiles.length;
 
+  if (totalResults === 0) {
+    return <EmptyState title="No results match your search." />;
+  }
+
+  return (
+    <section className="panel search-results-panel">
+      <div className="section-heading">
+        <div>
+          <div className="eyebrow">Search Results</div>
+          <h2>
+            {totalResults} result{totalResults === 1 ? "" : "s"} found
+          </h2>
+        </div>
+      </div>
+
+      {results.artifacts.length > 0 && (
+        <div className="search-result-section">
+          <h3>Dashboard Tiles</h3>
+
+          <div className="search-result-grid">
+            {results.artifacts.map((artifact) => (
+              <button
+                key={artifact.artifact_id}
+                type="button"
+                className="search-result-card"
+                onClick={() => onOpenDashboardTile(artifact)}
+              >
+                <strong>{artifact.tile_title || artifact.artifact_id}</strong>
+
+                <span>
+                  {getDepartmentName(artifact.department_id, departmentMap)}
+                  {artifact.subdepartment_id
+                    ? ` → ${getDepartmentName(
+                        artifact.subdepartment_id,
+                        departmentMap
+                      )}`
+                    : ""}
+                </span>
+
+                <small>{artifact.artifact_id}</small>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {results.employees.length > 0 && (
+        <div className="search-result-section">
+          <h3>Employee Cards</h3>
+
+          <div className="search-result-grid">
+            {results.employees.map((employee) => (
+              <button
+                key={employee.employee_email}
+                type="button"
+                className="search-result-card"
+                onClick={() => onOpenEmployee(employee)}
+              >
+                <strong>{employee.employee_name || employee.employee_email}</strong>
+                <span>{employee.title || "Title not listed"}</span>
+                <small>{formatText(employee.department_id)}</small>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {results.projects.length > 0 && (
+        <div className="search-result-section">
+          <h3>Projects</h3>
+
+          <div className="search-result-grid">
+            {results.projects.map((project) => (
+              <button
+                key={project.project_id}
+                type="button"
+                className="search-result-card"
+                onClick={() => onOpenProject(project)}
+              >
+                <strong>{project.job_name || "Unnamed Project"}</strong>
+                <span>Job #{project.job_number || "—"}</span>
+                <small>{getProjectTypeLabel(project)}</small>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {results.projectTiles.length > 0 && (
+        <div className="search-result-section">
+          <h3>Project Insight Tiles</h3>
+
+          <div className="search-result-grid">
+            {results.projectTiles.map((tile) => (
+              <button
+                key={`${tile.project.project_id}-${tile.tile_key}`}
+                type="button"
+                className="search-result-card"
+                onClick={() => onOpenProjectTile(tile)}
+              >
+                <strong>{tile.tile_title || tile.tile_key}</strong>
+
+                <span>
+                  {tile.project.job_name || "Unnamed Project"} · Job #
+                  {tile.project.job_number || "—"}
+                </span>
+
+                <small>{getProjectTypeLabel(tile.project)}</small>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+    </section>
+  );
+}
 function EmptyState({ title }) {
   return (
     <section className="empty-state">
