@@ -287,7 +287,9 @@ const executiveMetrics = useMemo(() => {
     dashboardCoverMetrics,
     currentDashboardCoverScope
   );
-}, [dashboardCoverMetrics, currentDashboardCoverScope]);  const artifactsByDepartment = useMemo(() => {
+}, [dashboardCoverMetrics, currentDashboardCoverScope]);
+
+const artifactsByDepartment = useMemo(() => {
     const grouped = {};
 
     artifacts.forEach((artifact) => {
