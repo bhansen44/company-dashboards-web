@@ -550,7 +550,7 @@ const artifactsByDepartment = useMemo(() => {
 {normalizedSearch && (
   <GlobalSearchResults
     results={globalSearchResults}
-    departmentMap={departmentMap}
+    
     onOpenDashboardTile={(artifact) => {
       setSearchText("");
       navigateTo(
@@ -938,11 +938,8 @@ function DashboardArtifactCard({
 
   const versionDate = getTileVersionDate(artifact, isAvailable);
 
-  const dataLink =
-    cleanCardText(artifact.data_link) ||
-    cleanCardText(artifact.artifact_url);
-
-  const hasClickableDataLink = isClickableLink(dataLink);
+const dataLink = cleanCardText(artifact.data_link);
+const dataLinkHref = getDataLinkHref(dataLink);
 
   return (
     <article className="dashboard-card">
@@ -961,20 +958,20 @@ function DashboardArtifactCard({
 
         <span>Version Date: {versionDate}</span>
 
-        <span>
-          Data Link:{" "}
-          {dataLink ? (
-            hasClickableDataLink ? (
-              <a href={dataLink} target="_blank" rel="noreferrer">
-                Open Data Link
-              </a>
-            ) : (
-              dataLink
-            )
-          ) : (
-            "N/A"
-          )}
-        </span>
+       <span>
+  Data Link:{" "}
+  {dataLink ? (
+    dataLinkHref ? (
+      <a href={dataLinkHref} target="_blank" rel="noreferrer">
+        Open Data Link
+      </a>
+    ) : (
+      dataLink
+    )
+  ) : (
+    "N/A"
+  )}
+</span>
       </div>
 
       <div className="card-actions">
@@ -1963,8 +1960,29 @@ function cleanCardText(value) {
   return text;
 }
 
-function isClickableLink(value) {
-  return /^https?:\/\//i.test(String(value || "").trim());
+function getDataLinkHref(value) {
+  const text = cleanCardText(value);
+
+  if (!text) {
+    return "";
+  }
+
+  if (/^https?:\/\//i.test(text)) {
+    return text;
+  }
+
+  if (/^www\./i.test(text)) {
+    return `https://${text}`;
+  }
+
+  if (
+    /^hansenrice\.sharepoint\.com/i.test(text) ||
+    /^app\.powerbi\.com/i.test(text)
+  ) {
+    return `https://${text}`;
+  }
+
+  return "";
 }
 
 function getTileVersionDate(artifact, isAvailable) {
