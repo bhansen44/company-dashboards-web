@@ -47,6 +47,7 @@ async function supabaseSelect(tableName, queryString = "?select=*") {
 
   if (!response.ok) {
     const text = await response.text();
+
     throw new Error(
       `Supabase request failed for ${tableName}: ${response.status} ${text}`
     );
@@ -57,7 +58,7 @@ async function supabaseSelect(tableName, queryString = "?select=*") {
 
 function makeSet(rows, accessType) {
   return new Set(
-    rows
+    (rows || [])
       .filter((row) => row.access_type === accessType)
       .map((row) => row.access_value)
   );
@@ -81,6 +82,7 @@ function safeEmployeeCard(employee) {
     access_level: employee.access_level,
   };
 }
+
 function sortArtifacts(a, b) {
   const deptCompare = String(a.department_id || "").localeCompare(
     String(b.department_id || "")
@@ -147,45 +149,47 @@ module.exports = async function handler(req, res) {
       });
     }
 
-   const [
-  departments,
-  artifacts,
-  dashboardAccessRows,
-  cardAccessRows,
-  allEmployees,
-  projects,
-  projectAccessRules,
-  projectTiles,
-  dashboardCoverMetrics,
-] = await Promise.all([
-  supabaseSelect("hri_departments", "?select=*"),
-  supabaseSelect("hri_artifacts", "?select=*"),
-  supabaseSelect(
-    "hri_employee_dashboard_access",
-    `?employee_email=eq.${encodeURIComponent(
-      email
-    )}&select=access_type,access_value`
-  ),
-  supabaseSelect(
-    "hri_employee_card_access",
-    `?employee_email=eq.${encodeURIComponent(
-      email
-    )}&select=scope,scope_value`
-  ),
-  supabaseSelect("hri_employees", "?select=*"),
-  supabaseSelect("hri_projects", "?select=*"),
-  supabaseSelect("hri_project_access_rules", "?select=*"),
-  supabaseSelect("hri_project_tiles", "?select=*"),
-  supabaseSelect(
-    "hri_dashboard_cover_metrics",
-    "?select=scope_key,scope_label,metric_key,metric_label,display_value,raw_value,value_prefix,value_suffix,trend_label,trend_direction,source_label,calculation_note,source_a,source_b,source_c,status,scope_sort_order,sort_order,updated_at&status=eq.active&order=scope_sort_order.asc,sort_order.asc"
-  ),
-]);
-const overviewExecutiveMetrics = (dashboardCoverMetrics || [])
-  .filter((metric) => metric.scope_key === "overview")
-  .sort(
-    (a, b) => Number(a.sort_order || 999) - Number(b.sort_order || 999)
-  );
+    const [
+      departments,
+      artifacts,
+      dashboardAccessRows,
+      cardAccessRows,
+      allEmployees,
+      projects,
+      projectAccessRules,
+      projectTiles,
+      dashboardCoverMetrics,
+    ] = await Promise.all([
+      supabaseSelect("hri_departments", "?select=*"),
+      supabaseSelect("hri_artifacts", "?select=*"),
+      supabaseSelect(
+        "hri_employee_dashboard_access",
+        `?employee_email=eq.${encodeURIComponent(
+          email
+        )}&select=access_type,access_value`
+      ),
+      supabaseSelect(
+        "hri_employee_card_access",
+        `?employee_email=eq.${encodeURIComponent(
+          email
+        )}&select=scope,scope_value`
+      ),
+      supabaseSelect("hri_employees", "?select=*"),
+      supabaseSelect("hri_projects", "?select=*"),
+      supabaseSelect("hri_project_access_rules", "?select=*"),
+      supabaseSelect("hri_project_tiles", "?select=*"),
+      supabaseSelect(
+        "hri_dashboard_cover_metrics",
+        "?select=scope_key,scope_label,metric_key,metric_label,display_value,raw_value,goal_value,goal_display_value,value_prefix,value_suffix,trend_label,trend_direction,source_label,source_location,source_detail,calculation_note,source_a,source_b,source_c,status,scope_sort_order,sort_order,updated_at&status=eq.active&order=scope_sort_order.asc,sort_order.asc"
+      ),
+    ]);
+
+    const overviewExecutiveMetrics = (dashboardCoverMetrics || [])
+      .filter((metric) => metric.scope_key === "overview")
+      .sort(
+        (a, b) => Number(a.sort_order || 999) - Number(b.sort_order || 999)
+      );
+
     const roles = makeSet(dashboardAccessRows, "role");
     const departmentsAllowed = makeSet(dashboardAccessRows, "department");
     const subdepartmentsAllowed = makeSet(
@@ -203,11 +207,11 @@ const overviewExecutiveMetrics = (dashboardCoverMetrics || [])
       subdepartmentsAllowed.has("all");
 
     const activeArtifacts = (artifacts || []).filter(
-  (artifact) => !isArchivedRow(artifact)
-);
+      (artifact) => !isArchivedRow(artifact)
+    );
 
-const visibleArtifacts = activeArtifacts
-  .filter((artifact) => {
+    const visibleArtifacts = activeArtifacts
+      .filter((artifact) => {
         if (canSeeAll) return true;
         if (artifactsAllowed.has(artifact.artifact_id)) return true;
         if (departmentsAllowed.has(artifact.department_id)) return true;
@@ -218,7 +222,7 @@ const visibleArtifacts = activeArtifacts
 
     const projectRulesByProject = new Map();
 
-    for (const rule of projectAccessRules) {
+    for (const rule of projectAccessRules || []) {
       if (!projectRulesByProject.has(rule.project_id)) {
         projectRulesByProject.set(rule.project_id, []);
       }
@@ -226,9 +230,13 @@ const visibleArtifacts = activeArtifacts
       projectRulesByProject.get(rule.project_id).push(rule);
     }
 
-    const visibleProjectsBase = projects
+    const visibleProjectsBase = (projects || [])
       .filter((project) => {
-        if (projectsAllowed.has("all") || roles.has("executive") || roles.has("admin")) {
+        if (
+          projectsAllowed.has("all") ||
+          roles.has("executive") ||
+          roles.has("admin")
+        ) {
           return true;
         }
 
@@ -257,8 +265,12 @@ const visibleArtifacts = activeArtifacts
         const programCompare = String(a.program_name || "").localeCompare(
           String(b.program_name || "")
         );
+
         if (programCompare !== 0) return programCompare;
-        return String(a.job_name || "").localeCompare(String(b.job_name || ""));
+
+        return String(a.job_name || "").localeCompare(
+          String(b.job_name || "")
+        );
       });
 
     const visibleProjectIds = new Set(
@@ -267,7 +279,7 @@ const visibleArtifacts = activeArtifacts
 
     const projectTilesByProject = new Map();
 
-    for (const tile of projectTiles) {
+    for (const tile of projectTiles || []) {
       if (!visibleProjectIds.has(tile.project_id)) {
         continue;
       }
@@ -290,20 +302,20 @@ const visibleArtifacts = activeArtifacts
       project_tiles: projectTilesByProject.get(project.project_id) || [],
     }));
 
-    const activeEmployees = allEmployees.filter(
+    const activeEmployees = (allEmployees || []).filter(
       (employee) => employee.is_active
     );
 
-    const hasAllEmployeeCards = cardAccessRows.some(
+    const hasAllEmployeeCards = (cardAccessRows || []).some(
       (row) => row.scope === "all" && row.scope_value === "all"
     );
 
-    const canSeeOwnCard = cardAccessRows.some(
+    const canSeeOwnCard = (cardAccessRows || []).some(
       (row) => row.scope === "individual" && row.scope_value === "self"
     );
 
     const employeeCardGroups = new Set(
-      cardAccessRows
+      (cardAccessRows || [])
         .filter((row) => row.scope === "group")
         .map((row) => row.scope_value)
     );
@@ -332,36 +344,37 @@ const visibleArtifacts = activeArtifacts
           String(b.employee_name || "")
         )
       );
+
     return res.status(200).json({
-  user: {
-    email,
-    name: currentEmployee.employee_name,
-    title: currentEmployee.title,
-    employee_code: currentEmployee.employee_code,
-    access_level: currentEmployee.access_level,
-    landing_page: currentEmployee.landing_page,
-    employee_card_access_raw: currentEmployee.employee_card_access_raw,
-  },
-  counts: {
-    artifacts: visibleArtifacts.length,
-    employeeCards: visibleEmployeeCards.length,
-    projects: visibleProjects.length,
-    projectTiles: visibleProjects.reduce(
-      (sum, project) => sum + (project.project_tiles || []).length,
-      0
-    ),
-  },
-  access: {
-    dashboardAccess: dashboardAccessRows,
-    employeeCardAccess: cardAccessRows,
-  },
-  dashboardCoverMetrics,
-  executiveMetrics: overviewExecutiveMetrics,
-  departments,
-  artifacts: visibleArtifacts,
-  employeeCards: visibleEmployeeCards,
-  projects: visibleProjects,
-});
+      user: {
+        email,
+        name: currentEmployee.employee_name,
+        title: currentEmployee.title,
+        employee_code: currentEmployee.employee_code,
+        access_level: currentEmployee.access_level,
+        landing_page: currentEmployee.landing_page,
+        employee_card_access_raw: currentEmployee.employee_card_access_raw,
+      },
+      counts: {
+        artifacts: visibleArtifacts.length,
+        employeeCards: visibleEmployeeCards.length,
+        projects: visibleProjects.length,
+        projectTiles: visibleProjects.reduce(
+          (sum, project) => sum + (project.project_tiles || []).length,
+          0
+        ),
+      },
+      access: {
+        dashboardAccess: dashboardAccessRows,
+        employeeCardAccess: cardAccessRows,
+      },
+      dashboardCoverMetrics,
+      executiveMetrics: overviewExecutiveMetrics,
+      departments,
+      artifacts: visibleArtifacts,
+      employeeCards: visibleEmployeeCards,
+      projects: visibleProjects,
+    });
   } catch (error) {
     console.error(error);
 
