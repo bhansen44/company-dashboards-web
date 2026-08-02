@@ -1895,11 +1895,21 @@ function normalizeDashboardCoverScope(value) {
     program_management: "program_management",
     program_mgt: "program_management",
     program_management_all_groups: "program_management",
-    cold_storage_distribution: "program_management",
-    heavy_industrial: "program_management",
-    food_beverage: "program_management",
+
+    food_beverage: "program_management_food_beverage",
+    f_and_b: "program_management_food_beverage",
+    f_b: "program_management_food_beverage",
+
+    cold_storage_distribution: "program_management_cold_storage_distribution",
+    cs_and_d: "program_management_cold_storage_distribution",
+    cs_d: "program_management_cold_storage_distribution",
+
+    heavy_industrial: "program_management_heavy_industrial",
+    hi: "program_management_heavy_industrial",
+
+    marketing: "program_management_marketing",
+
     cost_analytics: "program_management",
-    marketing: "program_management",
 
     steel_and_thermal: "steel_thermal",
     steel_thermal: "steel_thermal",
@@ -1908,10 +1918,19 @@ function normalizeDashboardCoverScope(value) {
 
   return aliases[normalized] || normalized || "overview";
 }
-
 function getDashboardCoverScopeKey(navigation) {
-  if (navigation.section === "dashboards" && navigation.departmentId) {
-    return normalizeDashboardCoverScope(navigation.departmentId);
+  if (navigation.section === "dashboards") {
+    if (navigation.departmentId === "program_management") {
+      if (navigation.subdepartmentId) {
+        return normalizeDashboardCoverScope(navigation.subdepartmentId);
+      }
+
+      return "program_management";
+    }
+
+    if (navigation.departmentId) {
+      return normalizeDashboardCoverScope(navigation.departmentId);
+    }
   }
 
   if (navigation.section === "employees" && navigation.employeeDepartmentId) {
@@ -1921,9 +1940,9 @@ function getDashboardCoverScopeKey(navigation) {
   if (navigation.section === "projects" && navigation.projectTypeLabel) {
     const projectTypeScopeMap = {
       PSE: "preconstruction",
-      "CS & D": "program_management",
-      "Heavy Industrial": "program_management",
-      "Food & Bev": "program_management",
+      "CS & D": "program_management_cold_storage_distribution",
+      "Heavy Industrial": "program_management_heavy_industrial",
+      "Food & Bev": "program_management_food_beverage",
       "Steel & Thermal": "steel_thermal",
     };
 
@@ -1932,7 +1951,6 @@ function getDashboardCoverScopeKey(navigation) {
 
   return "overview";
 }
-
 function selectDashboardCoverMetrics(metrics, scopeKey) {
   if (!Array.isArray(metrics) || metrics.length === 0) {
     return DEFAULT_EXECUTIVE_METRICS;
