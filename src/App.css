@@ -1121,3 +1121,72 @@ a {
 .dashboard-card .meta-stack a:hover {
   text-decoration: underline;
 }
+.employee-score-card {
+  min-height: 220px;
+}
+
+.employee-score-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.employee-score-header h3 {
+  margin: 0;
+  line-height: 1.2;
+}
+
+.employee-score-pill {
+  min-width: 110px;
+  border-radius: 18px;
+  padding: 0.55rem 0.75rem;
+  text-align: center;
+  background: #f3f6f7;
+  border: 1px solid #d8e2e6;
+}
+
+.employee-score-pill span {
+  display: block;
+  font-size: 0.65rem;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #64748b;
+}
+
+.employee-score-pill strong {
+  display: block;
+  margin-top: 0.15rem;
+  font-size: 1.35rem;
+  color: #004250;
+}
+
+.employee-score-pill.pending strong {
+  font-size: 0.85rem;
+  color: #64748b;
+}
+
+.employee-metric-list {
+  display: grid;
+  gap: 0.65rem;
+}
+
+.employee-metric-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  border-top: 1px solid #e5eef1;
+  padding-top: 0.55rem;
+}
+
+.employee-metric-row span {
+  color: #425466;
+  font-weight: 700;
+}
+
+.employee-metric-row strong {
+  color: #003b49;
+  font-weight: 900;
+}

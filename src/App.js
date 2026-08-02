@@ -346,16 +346,21 @@ const artifactsByDepartment = useMemo(() => {
     )
   );
 
-  const employeeResults = employeeCards.filter((employee) =>
-    matches(
-      employee.employee_name,
-      employee.employee_email,
-      employee.title,
-      employee.department_id,
-      employee.subdepartment_id,
-      employee.access_level
-    )
-  );
+ const employeeResults = employeeCards.filter((employee) =>
+  matches(
+    employee.employee_name,
+    employee.employee_email,
+    employee.title,
+    employee.department_id,
+    employee.subdepartment_id,
+    employee.access_level,
+    employee.employee_score_display,
+    ...(employee.score_metrics || []).flatMap((metric) => [
+      metric.metric_label,
+      metric.metric_score_display,
+    ])
+  )
+);
 
   const projectResults = projects.filter((project) =>
     matches(
@@ -1082,21 +1087,32 @@ const dataLinkHref = getDataLinkHref(dataLink);
 }
 
 function EmployeeCard({ employee }) {
+  const metrics = employee.score_metrics || [];
+  const hasScore = employee.employee_score_display !== "Metrics Pending";
+
   return (
-    <article className="employee-card">
-      <div className="employee-avatar">
-        {getInitials(employee.employee_name || employee.employee_email)}
-      </div>
-
+    <article className="employee-card employee-score-card">
       <div className="employee-card-body">
-        <h3>{employee.employee_name || "Employee"}</h3>
-        <p>{employee.title || "Title not listed"}</p>
+        <div className="employee-score-header">
+          <h3>{employee.employee_name || "Employee"}</h3>
 
-        <div className="meta-stack">
-          <span>{employee.employee_email}</span>
-          <span>Department: {formatText(employee.department_id)}</span>
-          <span>Subdepartment: {formatText(employee.subdepartment_id)}</span>
-          <span>Access: {employee.access_level}</span>
+          <div className={`employee-score-pill ${hasScore ? "active" : "pending"}`}>
+            <span>Total Score</span>
+            <strong>{employee.employee_score_display || "Metrics Pending"}</strong>
+          </div>
+        </div>
+
+        <div className="employee-metric-list">
+          {metrics.length === 0 ? (
+            <span className="muted">Metrics pending</span>
+          ) : (
+            metrics.map((metric) => (
+              <div key={metric.metric_key} className="employee-metric-row">
+                <span>{metric.metric_label}</span>
+                <strong>{metric.metric_score_display || "—"}</strong>
+              </div>
+            ))
+          )}
         </div>
       </div>
     </article>
@@ -1565,13 +1581,18 @@ function filterEmployees(employees, searchText) {
 
   return employees.filter((employee) =>
     [
-      employee.employee_name,
-      employee.employee_email,
-      employee.title,
-      employee.department_id,
-      employee.subdepartment_id,
-      employee.access_level,
-    ]
+  employee.employee_name,
+  employee.employee_email,
+  employee.title,
+  employee.department_id,
+  employee.subdepartment_id,
+  employee.access_level,
+  employee.employee_score_display,
+  ...(employee.score_metrics || []).flatMap((metric) => [
+    metric.metric_label,
+    metric.metric_score_display,
+  ]),
+]
       .filter(Boolean)
       .join(" ")
       .toLowerCase()
