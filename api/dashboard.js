@@ -99,6 +99,10 @@ function sortArtifacts(a, b) {
   return Number(a.sort_order || 999) - Number(b.sort_order || 999);
 }
 
+function normalizeEmail(value) {
+  return String(value || "").trim().toLowerCase();
+}
+
 module.exports = async function handler(req, res) {
   try {
     if (req.method !== "GET") {
@@ -117,7 +121,7 @@ module.exports = async function handler(req, res) {
     }
 
     const claims = await verifyAuth0Token(token);
-    const email = String(claims.email || "").trim().toLowerCase();
+    const email = normalizeEmail(claims.email);
 
     if (!email) {
       return res.status(403).json({
@@ -159,6 +163,8 @@ module.exports = async function handler(req, res) {
       projectAccessRules,
       projectTiles,
       dashboardCoverMetrics,
+      employeeScoreSummaries,
+      employeeScoreMetrics,
     ] = await Promise.all([
       supabaseSelect("hri_departments", "?select=*"),
       supabaseSelect("hri_artifacts", "?select=*"),
@@ -181,6 +187,11 @@ module.exports = async function handler(req, res) {
       supabaseSelect(
         "hri_dashboard_cover_metrics",
         "?select=scope_key,scope_label,metric_key,metric_label,display_value,raw_value,goal_value,goal_display_value,value_prefix,value_suffix,trend_label,trend_direction,source_label,source_location,source_detail,calculation_note,source_a,source_b,source_c,status,scope_sort_order,sort_order,updated_at&status=eq.active&order=scope_sort_order.asc,sort_order.asc"
+      ),
+      supabaseSelect("hri_employee_card_score_summary", "?select=*"),
+      supabaseSelect(
+        "hri_employee_card_score_metrics",
+        "?select=*&status=eq.active&order=employee_email.asc,sort_order.asc"
       ),
     ]);
 
@@ -302,6 +313,35 @@ module.exports = async function handler(req, res) {
       project_tiles: projectTilesByProject.get(project.project_id) || [],
     }));
 
+    const employeeScoreSummaryByEmail = new Map(
+      (employeeScoreSummaries || []).map((summary) => [
+        normalizeEmail(summary.employee_email),
+        summary,
+      ])
+    );
+
+    const employeeScoreMetricsByEmail = new Map();
+
+    for (const metric of employeeScoreMetrics || []) {
+      const metricEmail = normalizeEmail(metric.employee_email);
+
+      if (!metricEmail) {
+        continue;
+      }
+
+      if (!employeeScoreMetricsByEmail.has(metricEmail)) {
+        employeeScoreMetricsByEmail.set(metricEmail, []);
+      }
+
+      employeeScoreMetricsByEmail.get(metricEmail).push(metric);
+    }
+
+    for (const metrics of employeeScoreMetricsByEmail.values()) {
+      metrics.sort(
+        (a, b) => Number(a.sort_order || 999) - Number(b.sort_order || 999)
+      );
+    }
+
     const activeEmployees = (allEmployees || []).filter(
       (employee) => employee.is_active
     );
@@ -322,9 +362,11 @@ module.exports = async function handler(req, res) {
 
     const visibleEmployeeCards = activeEmployees
       .filter((employee) => {
+        const employeeEmail = normalizeEmail(employee.employee_email);
+
         if (hasAllEmployeeCards) return true;
 
-        if (canSeeOwnCard && employee.employee_email === email) {
+        if (canSeeOwnCard && employeeEmail === email) {
           return true;
         }
 
@@ -338,7 +380,37 @@ module.exports = async function handler(req, res) {
 
         return false;
       })
-      .map(safeEmployeeCard)
+      .map((employee) => {
+        const safeCard = safeEmployeeCard(employee);
+        const normalizedEmployeeEmail = normalizeEmail(employee.employee_email);
+        const scoreSummary = employeeScoreSummaryByEmail.get(
+          normalizedEmployeeEmail
+        );
+        const rawScoreMetrics =
+          employeeScoreMetricsByEmail.get(normalizedEmployeeEmail) || [];
+
+        const scoreMetrics = rawScoreMetrics.map((metric) => ({
+          metric_key: metric.metric_key,
+          metric_label: metric.metric_label,
+          metric_score: metric.metric_score,
+          metric_score_display: metric.metric_score_display,
+          sort_order: metric.sort_order,
+          status: metric.status,
+          updated_at: metric.updated_at,
+        }));
+
+        return {
+          ...safeCard,
+          employee_score: scoreSummary?.total_employee_score ?? null,
+          employee_score_display:
+            scoreSummary?.total_employee_score_display || "Metrics Pending",
+          employee_score_status: scoreSummary?.score_status || "pending",
+          employee_score_count:
+            scoreSummary?.number_of_inputs || scoreMetrics.length || 0,
+          employee_score_updated_at: scoreSummary?.updated_at || null,
+          score_metrics: scoreMetrics,
+        };
+      })
       .sort((a, b) =>
         String(a.employee_name || "").localeCompare(
           String(b.employee_name || "")
