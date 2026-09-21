@@ -1298,7 +1298,7 @@ function ProjectsTab({
               Project: {selectedProject.job_number || selectedProject.project_id}
             </span>
             <span>Tile key: {tile.tile_key}</span>
-            <span>Type: {formatText(tile.artifact_type)}</span>
+            <span>Last Run: {getProjectTileLastRunDate(tile)}</span>
             <span>ID: {artifactId}</span>
           </div>
 
@@ -2048,6 +2048,50 @@ function getTileVersionDate(artifact, isAvailable) {
   }
 
   return "N/A";
+}
+function getProjectTileLastRunDate(tile) {
+  const explicitLabel = cleanCardText(tile.last_run_label);
+
+  if (explicitLabel) {
+    return explicitLabel;
+  }
+
+  const explicitDate =
+    cleanCardText(tile.last_run_at) ||
+    cleanCardText(tile.updated_at) ||
+    cleanCardText(tile.version_date);
+
+  if (explicitDate) {
+    const parsedDate = new Date(explicitDate);
+
+    if (!Number.isNaN(parsedDate.getTime())) {
+      return parsedDate.toLocaleString([], {
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit",
+        hour: "2-digit",
+        minute: "2-digit",
+      });
+    }
+
+    return explicitDate;
+  }
+
+  const versionId = cleanCardText(tile.current_published_version_id);
+
+  const versionDateMatch = versionId.match(/_(\d{8})_(\d{6})_/);
+
+  if (versionDateMatch) {
+    const datePart = versionDateMatch[1];
+    const timePart = versionDateMatch[2];
+
+    return `${datePart.slice(0, 4)}-${datePart.slice(4, 6)}-${datePart.slice(
+      6,
+      8
+    )} ${timePart.slice(0, 2)}:${timePart.slice(2, 4)}`;
+  }
+
+  return "Not run";
 }
 function formatText(value) {
   if (!value) {
